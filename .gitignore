@@ -18,3 +18,5 @@ node_modules/
 *.sauvegarde
 *.avant-*
 sauvegardes/
+*.COPIE-SECURITE*
+*.NAVIGATEUR*
