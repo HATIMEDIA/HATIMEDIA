@@ -1,0 +1,20 @@
+# Secrets et sécurité — NE JAMAIS PUBLIER
+.env
+credentials.json
+gmail-token.json
+env
+
+# Dépendances (à réinstaller avec npm install)
+node_modules/
+
+# Fichiers système Mac
+.DS_Store
+
+# Sauvegardes locales
+*.AVANT-*
+*.HISTORIQUE-OK
+*.VERSION-OK
+*.VERSION-FINALE
+*.sauvegarde
+*.avant-*
+sauvegardes/

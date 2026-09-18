@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HATIMEDIA — Discuter</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            min-height: 100dvh;
+            background: linear-gradient(135deg, #f0f2f7 0%, #e0e5ee 100%);
+        }
+
+        .app {
+            display: flex;
+            flex-direction: column;
+            min-height: 100dvh;
+            max-width: 700px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 0 40px rgba(0,0,0,.2);
+        }
+
+        /* ================================
+           BANDEAU HAUT — IMAGE ENTIÈRE
+           ================================ */
+        .header-banner {
+            position: relative;
+            width: 100%;
+            background: #0f172a;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .header-banner .header-image {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 320px;
+            object-fit: contain;
+        }
+
+        .header-banner .reset {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            z-index: 5;
+            border: 1px solid rgba(255,255,255,.35);
+            background: rgba(0,0,0,.55);
+            backdrop-filter: blur(6px);
+            -webkit-backdrop-filter: blur(6px);
+            color: #fff;
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        /* ================================
+           BANDEAU "REPRENDRE LA CONVERSATION"
+           ================================ */
+        .reprendre-banner {
+            display: none;
+            padding: 10px 16px;
+            background: linear-gradient(135deg, #eef2ff, #e0e7ff);
+            border-bottom: 1px solid #c7d2fe;
+            text-align: center;
+            font-size: 13px;
+            color: #4338ca;
+        }
+
+        .reprendre-banner.visible {
+            display: block;
+        }
+
+        .reprendre-banner button {
+            margin-left: 8px;
+            border: 0;
+            background: #4338ca;
+            color: #fff;
+            border-radius: 8px;
+            padding: 6px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* ================================
+           CHAT
+           ================================ */
+        .chat {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .welcome {
+            text-align: center;
+            margin: auto;
+            padding: 40px 20px;
+            color: #4b5563;
+            background: rgba(255,255,255,.85);
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
+
+        .welcome .logo-image {
+            display: block;
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+            margin: 0 auto 20px;
+            border-radius: 20px;
+        }
+
+        .welcome h2 {
+            color: #111827;
+            font-size: 22px;
+            margin-bottom: 8px;
+        }
+
+        .welcome p {
+            font-size: 15px;
+            line-height: 1.5;
+            max-width: 340px;
+            margin: 0 auto;
+        }
+
+        .message {
+            max-width: 78%;
+            padding: 11px 15px;
+            border-radius: 18px;
+            line-height: 1.45;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 15px;
+            animation: fadeIn .2s ease;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(4px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user {
+            align-self: flex-end;
+            background: #2563eb;
+            color: #fff;
+            border-bottom-right-radius: 5px;
+        }
+
+        .assistant {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.95);
+            color: #1f2937;
+            border-bottom-left-radius: 5px;
+        }
+
+        .thinking {
+            align-self: flex-start;
+            background: rgba(255, 255, 255, 0.95);
+            color: #6b7280;
+            font-style: italic;
+            padding: 11px 15px;
+            border-radius: 18px;
+            border-bottom-left-radius: 5px;
+            box-shadow: 0 2px 8px rgba(0,0,0,.06);
+        }
+
+        /* ================================
+           ZONE DE SAISIE
+           ================================ */
+        .input-area {
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-top: 1px solid #e7ebf2;
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        #message {
+            flex: 1;
+            min-width: 0;
+            border: 1px solid #d9dfeb;
+            border-radius: 22px;
+            background: #f8f9fc;
+            padding: 12px 16px;
+            font-size: 15px;
+            outline: none;
+            font-family: inherit;
+        }
+
+        #message:focus {
+            border-color: #8797c5;
+            box-shadow: 0 0 0 3px rgba(90,110,170,.10);
+        }
+
+        .send {
+            width: 46px;
+            height: 46px;
+            border: 0;
+            border-radius: 50%;
+            background: #2563eb;
+            color: #fff;
+            font-size: 20px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            transition: background .15s, transform .15s;
+        }
+
+        .send:hover { background: #1d4ed8; transform: scale(1.05); }
+        .send:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+        footer {
+            padding: 10px 16px 14px;
+            text-align: center;
+            font-size: 11px;
+            color: #9ca3af;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+<div class="app">
+    <header class="header-banner">
+        <img src="/fond-chat.jpg" alt="HATIMEDIA" class="header-image">
+        <button class="reset" onclick="nouvelleConversation()">Nouveau</button>
+    </header>
+
+    <!-- Bandeau "Reprendre la conversation" (masqué par défaut) -->
+    <div id="reprendreBanner" class="reprendre-banner">
+        💬 Vous avez une conversation en cours.
+        <button onclick="reprendreConversation()">La reprendre</button>
+    </div>
+
+    <div id="chat" class="chat">
+        <div id="welcome" class="welcome">
+            <img src="/mon-logo.png" class="logo-image" alt="HATIMEDIA">
+             <h3><font color="blue">Bienvenue </font><font color="blue">sur </font> <font color="red">HATIMEDIA</font></h3>
+    <h3><font color="green">Miarahaba sy tonga soa eto! </font><font color="green">amin'ny </font> <font color="red">HATIMEDIA</font></h3>
+    <h3><font color="blue">Willkommen </font><font color="blue">bei </font> <font color="red">HATIMEDIA</font></h3>
+    <h3><font color="black">Karibou </font><font color="black">Chanzo</font> <font color="red">HATIMEDIA</font></h3>
+    <h3><font color="blue">हैटीमीडिया में आपका स्वागत है</font></h2>
+    <h3><font color="green">Bem-vindo(a)</font><font color="brown">ao</font> <font color="red">HATIMEDIA</font></h3>
+    <h3><font color="brown">أهلا بكم في هاتيميديا</font></h2>
+    <h3><p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p></h3>
+    <h3><p>Anontanio ahy izay fanontanianao, eto aho hiresaka aminao.</p></h3>
+    <h3><p>اسألني أي سؤال، أنا هنا لأتحدث معك.</p></h3>
+</div>
+    </div>
+
+    <div class="input-area">
+        <input id="message" type="text" placeholder="Votre message..." autocomplete="off">
+        <button class="send" id="sendBtn" onclick="envoyerMessage()">➤</button>
+    </div>
+
+    <footer>Propulsé par HATIMEDIA ✨</footer>
+</div>
+
+<script>
+const chat = document.getElementById("chat");
+const input = document.getElementById("message");
+const sendBtn = document.getElementById("sendBtn");
+const reprendreBanner = document.getElementById("reprendreBanner");
+
+let sessionId = localStorage.getItem("hatimedia_public_session");
+if (!sessionId) {
+    sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
+    localStorage.setItem("hatimedia_public_session", sessionId);
+}
+
+let conversationId = null;
+let enCours = false;
+let historiqueCharge = false;
+
+// ==========================================
+// VÉRIFIER SI UNE CONVERSATION EXISTE (sans l'afficher)
+// ==========================================
+async function verifierHistorique() {
+    try {
+        const r = await fetch("/api/chat-public/historique/" + sessionId);
+        const data = await r.json();
+
+        if (data.ok && data.messages && data.messages.length > 0) {
+            conversationId = data.conversationId;
+            // Affiche le bandeau "Reprendre la conversation"
+            reprendreBanner.classList.add("visible");
+            // Stocke temporairement les messages pour les afficher si l'utilisateur clique
+            window._messagesEnAttente = data.messages;
+        }
+    } catch (e) {
+        console.error("Erreur vérification historique :", e);
+    }
+}
+
+// ==========================================
+// REPRENDRE LA CONVERSATION (au clic sur le bandeau)
+// ==========================================
+function reprendreConversation() {
+    const messages = window._messagesEnAttente;
+    if (!messages) return;
+
+    document.getElementById("welcome")?.remove();
+    reprendreBanner.classList.remove("visible");
+
+    for (const m of messages) {
+        ajouterMessage(m.content, m.role === "user" ? "user" : "assistant", false);
+    }
+    chat.scrollTop = chat.scrollHeight;
+    historiqueCharge = true;
+    input.focus();
+}
+
+// ==========================================
+// AJOUTER UN MESSAGE
+// ==========================================
+function ajouterMessage(texte, type, scroll = true) {
+    document.getElementById("welcome")?.remove();
+    const div = document.createElement("div");
+    div.className = "message " + type;
+    div.textContent = texte;
+    chat.appendChild(div);
+    if (scroll) chat.scrollTop = chat.scrollHeight;
+    return div;
+}
+
+// ==========================================
+// ENVOYER
+// ==========================================
+async function envoyerMessage() {
+    const texte = input.value.trim();
+    if (!texte || enCours) return;
+
+    enCours = true;
+    sendBtn.disabled = true;
+
+    // Cache le bandeau dès qu'on envoie un message
+    reprendreBanner.classList.remove("visible");
+
+    ajouterMessage(texte, "user");
+    input.value = "";
+
+    const thinking = document.createElement("div");
+    thinking.className = "thinking";
+    thinking.textContent = "HATIMEDIA réfléchit...";
+    chat.appendChild(thinking);
+    chat.scrollTop = chat.scrollHeight;
+
+    try {
+        const r = await fetch("/api/chat-public", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                message: texte,
+                sessionId: sessionId,
+                conversationId: conversationId
+            })
+        });
+
+        const data = await r.json();
+        thinking.remove();
+
+        if (data.reply) {
+            ajouterMessage(data.reply, "assistant");
+            if (data.conversationId) conversationId = data.conversationId;
+        } else {
+            ajouterMessage("Hmm, je n'ai pas pu répondre. Réessayez !", "assistant");
+        }
+    } catch (error) {
+        console.error(error);
+        thinking.remove();
+        ajouterMessage("Connexion perdue. Vérifiez votre réseau.", "assistant");
+    }
+
+    enCours = false;
+    sendBtn.disabled = false;
+    input.focus();
+}
+
+// ==========================================
+// NOUVELLE CONVERSATION
+// ==========================================
+async function nouvelleConversation() {
+    if (!confirm("Démarrer une nouvelle conversation ?")) return;
+
+    sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
+    localStorage.setItem("hatimedia_public_session", sessionId);
+    conversationId = null;
+    historiqueCharge = false;
+    window._messagesEnAttente = null;
+    reprendreBanner.classList.remove("visible");
+
+    chat.innerHTML = `
+        <div id="welcome" class="welcome">
+            <img src="/mon-logo.png" class="logo-image" alt="HATIMEDIA">
+            <h2>Nouvelle conversation</h2>
+            <p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p>
+        </div>
+    `;
+    input.focus();
+}
+
+// ==========================================
+// ENTRÉE CLAVIER
+// ==========================================
+input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+        e.preventDefault();
+        envoyerMessage();
+    }
+});
+
+// ==========================================
+// DÉMARRAGE
+// ==========================================
+verifierHistorique();
+input.focus();
+</script>
+
+</body>
+</html>
