@@ -25,9 +25,6 @@
             box-shadow: 0 0 40px rgba(0,0,0,.2);
         }
 
-        /* ================================
-           BANDEAU HAUT — IMAGE ENTIÈRE
-           ================================ */
         .header-banner {
             position: relative;
             width: 100%;
@@ -60,9 +57,6 @@
             cursor: pointer;
         }
 
-        /* ================================
-           BANDEAU "REPRENDRE LA CONVERSATION"
-           ================================ */
         .reprendre-banner {
             display: none;
             padding: 10px 16px;
@@ -73,9 +67,7 @@
             color: #4338ca;
         }
 
-        .reprendre-banner.visible {
-            display: block;
-        }
+        .reprendre-banner.visible { display: block; }
 
         .reprendre-banner button {
             margin-left: 8px;
@@ -89,9 +81,6 @@
             cursor: pointer;
         }
 
-        /* ================================
-           CHAT
-           ================================ */
         .chat {
             flex: 1;
             overflow-y: auto;
@@ -104,7 +93,7 @@
         .welcome {
             text-align: center;
             margin: auto;
-            padding: 40px 20px;
+            padding: 30px 20px;
             color: #4b5563;
             background: rgba(255,255,255,.85);
             border-radius: 20px;
@@ -113,24 +102,70 @@
 
         .welcome .logo-image {
             display: block;
-            width: 120px;
-            height: 120px;
+            width: 110px;
+            height: 110px;
             object-fit: contain;
-            margin: 0 auto 20px;
+            margin: 0 auto 16px;
             border-radius: 20px;
         }
 
         .welcome h2 {
             color: #111827;
-            font-size: 22px;
-            margin-bottom: 8px;
+            font-size: 20px;
+            margin-bottom: 6px;
+        }
+
+        .welcome h3 {
+            font-size: 14px;
+            margin: 4px 0;
+            font-weight: 500;
         }
 
         .welcome p {
-            font-size: 15px;
-            line-height: 1.5;
-            max-width: 340px;
-            margin: 0 auto;
+            font-size: 13px;
+            line-height: 1.4;
+            margin: 4px 0;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 20px;
+            padding: 0 10px;
+        }
+
+        .action-card {
+            padding: 14px 10px;
+            border: 1px solid #e2e7f0;
+            border-radius: 14px;
+            background: #fff;
+            color: #172033;
+            cursor: pointer;
+            transition: transform .15s, box-shadow .15s;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,.1);
+        }
+
+        .action-icon {
+            font-size: 22px;
+        }
+
+        .action-card strong {
+            font-size: 12px;
+            color: #18233a;
+        }
+
+        .action-card small {
+            font-size: 10px;
+            color: #7a8495;
         }
 
         .message {
@@ -175,9 +210,6 @@
             box-shadow: 0 2px 8px rgba(0,0,0,.06);
         }
 
-        /* ================================
-           ZONE DE SAISIE
-           ================================ */
         .input-area {
             padding: 12px 16px;
             background: rgba(255, 255, 255, 0.95);
@@ -245,7 +277,6 @@
         <button class="reset" onclick="nouvelleConversation()">Nouveau</button>
     </header>
 
-    <!-- Bandeau "Reprendre la conversation" (masqué par défaut) -->
     <div id="reprendreBanner" class="reprendre-banner">
         💬 Vous avez une conversation en cours.
         <button onclick="reprendreConversation()">La reprendre</button>
@@ -254,17 +285,42 @@
     <div id="chat" class="chat">
         <div id="welcome" class="welcome">
             <img src="/mon-logo.png" class="logo-image" alt="HATIMEDIA">
-             <h3><font color="blue">Bienvenue </font><font color="blue">sur </font> <font color="red">HATIMEDIA</font></h3>
-    <h3><font color="green">Miarahaba sy tonga soa eto! </font><font color="green">amin'ny </font> <font color="red">HATIMEDIA</font></h3>
-    <h3><font color="blue">Willkommen </font><font color="blue">bei </font> <font color="red">HATIMEDIA</font></h3>
-    <h3><font color="black">Karibou </font><font color="black">Chanzo</font> <font color="red">HATIMEDIA</font></h3>
-    <h3><font color="blue">हैटीमीडिया में आपका स्वागत है</font></h2>
-    <h3><font color="green">Bem-vindo(a)</font><font color="brown">ao</font> <font color="red">HATIMEDIA</font></h3>
-    <h3><font color="brown">أهلا بكم في هاتيميديا</font></h2>
-    <h3><p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p></h3>
-    <h3><p>Anontanio ahy izay fanontanianao, eto aho hiresaka aminao.</p></h3>
-    <h3><p>اسألني أي سؤال، أنا هنا لأتحدث معك.</p></h3>
-</div>
+
+            <h3 style="color:blue;">Bienvenue sur <span style="color:red;">HATIMEDIA</span></h3>
+            <h3 style="color:green;">Miarahaba sy tonga soa eto amin'ny <span style="color:red;">HATIMEDIA</span></h3>
+            <h3 style="color:blue;">Willkommen bei <span style="color:red;">HATIMEDIA</span></h3>
+            <h3 style="color:black;">Karibou Chanzo <span style="color:red;">HATIMEDIA</span></h3>
+            <h3 style="color:blue;">हैटीमीडिया में आपका स्वागत है</h3>
+            <h3 style="color:brown;">Bem-vindo ao <span style="color:red;">HATIMEDIA</span></h3>
+            <h3 style="color:brown;">أهلا بكم في هاتيميديا</h3>
+
+            <p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p>
+            <p>Anontanio ahy izay fanontanianao, eto aho hiresaka aminao.</p>
+            <p>اسألني أي سؤال، أنا هنا لأتحدث معك.</p>
+
+            <div class="action-grid">
+                <button class="action-card" onclick="document.getElementById('message').focus()">
+                    <span class="action-icon">💬</span>
+                    <strong>DISCUTER</strong>
+                    <small>Écrire un message</small>
+                </button>
+                <button class="action-card" onclick="parler()">
+                    <span class="action-icon">🎙️</span>
+                    <strong>PARLER</strong>
+                    <small>Parler avec ma voix</small>
+                </button>
+                <button class="action-card" onclick="activerVoix(!voixActive)">
+                    <span class="action-icon">🔊</span>
+                    <strong>VOIX <span id="voixEtat">OFF</span></strong>
+                    <small>Réponses en audio</small>
+                </button>
+                <button class="action-card" onclick="nouvelleConversation()">
+                    <span class="action-icon">🔄</span>
+                    <strong>NOUVEAU</strong>
+                    <small>Recommencer à zéro</small>
+                </button>
+            </div>
+        </div>
     </div>
 
     <div class="input-area">
@@ -290,9 +346,102 @@ if (!sessionId) {
 let conversationId = null;
 let enCours = false;
 let historiqueCharge = false;
+let voixActive = true; // 🔊 Réponse vocale activée par défaut
 
 // ==========================================
-// VÉRIFIER SI UNE CONVERSATION EXISTE (sans l'afficher)
+// 🎙️ PARLER — Reconnaissance vocale (micro)
+// ==========================================
+function parler() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("🎙️ La reconnaissance vocale n'est pas disponible dans ce navigateur.\nEssayez Chrome ou Safari (dernière version).");
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.lang = "fr-FR";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onstart = function () {
+        input.placeholder = "🎙️ Je vous écoute...";
+    };
+
+    recognition.onresult = function (event) {
+        const texte = event.results[0][0].transcript;
+        input.value = texte;
+        input.placeholder = "Votre message...";
+        envoyerMessage();
+    };
+
+    recognition.onerror = function (event) {
+        console.error("Erreur micro :", event.error);
+        input.placeholder = "Votre message...";
+
+        if (event.error === "not-allowed") {
+            alert("🎙️ Autorisez l'accès au micro dans votre navigateur.");
+        } else {
+            alert("🎙️ Impossible d'utiliser le micro : " + event.error);
+        }
+    };
+
+    recognition.onend = function () {
+        input.placeholder = "Votre message...";
+    };
+
+    recognition.start();
+}
+
+// ==========================================
+// 🔊 VOIX — Activer / Désactiver les réponses vocales
+// ==========================================
+function activerVoix(active) {
+    voixActive = active;
+    document.getElementById("voixEtat").textContent = voixActive ? "ON" : "OFF";
+
+    if (!voixActive && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+}
+
+function faireParler(texte) {
+    if ("speechSynthesis" in window) {
+        
+    // Annule toute voix en cours
+    window.speechSynthesis.cancel();
+
+    const voix = new SpeechSynthesisUtterance(texte);
+
+    // Cherche une voix française disponible
+    const voixDisponibles = window.speechSynthesis.getVoices();
+    const voixFR = voixDisponibles.find(v => v.lang && v.lang.startsWith("fr"));
+
+    if (voixFR) {
+        voix.voice = voixFR;
+        console.log("🎙️ Voix utilisée :", voixFR.name, voixFR.lang);
+    } else {
+        console.log("🎙️ Aucune voix française, voix par défaut utilisée");
+    }
+
+    voix.lang = "fr-FR";
+    voix.volume = 1;
+    voix.rate = 1;
+    voix.pitch = 1;
+
+    window.speechSynthesis.speak(voix);
+}
+
+// Charge les voix au démarrage (obligatoire sur Chrome)
+if ("speechSynthesis" in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = () => {
+        window.speechSynthesis.getVoices();
+    };
+}
+
+// ==========================================
+// VÉRIFIER SI UNE CONVERSATION EXISTE
 // ==========================================
 async function verifierHistorique() {
     try {
@@ -301,9 +450,7 @@ async function verifierHistorique() {
 
         if (data.ok && data.messages && data.messages.length > 0) {
             conversationId = data.conversationId;
-            // Affiche le bandeau "Reprendre la conversation"
             reprendreBanner.classList.add("visible");
-            // Stocke temporairement les messages pour les afficher si l'utilisateur clique
             window._messagesEnAttente = data.messages;
         }
     } catch (e) {
@@ -312,7 +459,7 @@ async function verifierHistorique() {
 }
 
 // ==========================================
-// REPRENDRE LA CONVERSATION (au clic sur le bandeau)
+// REPRENDRE LA CONVERSATION
 // ==========================================
 function reprendreConversation() {
     const messages = window._messagesEnAttente;
@@ -352,7 +499,6 @@ async function envoyerMessage() {
     enCours = true;
     sendBtn.disabled = true;
 
-    // Cache le bandeau dès qu'on envoie un message
     reprendreBanner.classList.remove("visible");
 
     ajouterMessage(texte, "user");
@@ -381,6 +527,11 @@ async function envoyerMessage() {
         if (data.reply) {
             ajouterMessage(data.reply, "assistant");
             if (data.conversationId) conversationId = data.conversationId;
+
+            // 🔊 Si la voix est activée, HATIMEDIA lit sa réponse
+            if (voixActive) {
+                faireParler(data.reply);
+            }
         } else {
             ajouterMessage("Hmm, je n'ai pas pu répondre. Réessayez !", "assistant");
         }
@@ -408,14 +559,8 @@ async function nouvelleConversation() {
     window._messagesEnAttente = null;
     reprendreBanner.classList.remove("visible");
 
-    chat.innerHTML = `
-        <div id="welcome" class="welcome">
-            <img src="/mon-logo.png" class="logo-image" alt="HATIMEDIA">
-            <h2>Nouvelle conversation</h2>
-            <p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p>
-        </div>
-    `;
-    input.focus();
+    // 🔄 Recharge l'accueil avec les cartes
+    location.reload();
 }
 
 // ==========================================
