@@ -154,6 +154,17 @@
             box-shadow: 0 8px 20px rgba(0,0,0,.1);
         }
 
+        .action-card.actif {
+            background: #2563eb;
+            color: #fff;
+            border-color: #2563eb;
+        }
+
+        .action-card.actif strong,
+        .action-card.actif small {
+            color: #fff;
+        }
+
         .action-icon {
             font-size: 22px;
         }
@@ -295,8 +306,6 @@
             <h3 style="color:brown;">أهلا بكم في هاتيميديا</h3>
 
             <p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p>
-            <p>Anontanio ahy izay fanontanianao, eto aho hiresaka aminao.</p>
-            <p>اسألني أي سؤال، أنا هنا لأتحدث معك.</p>
 
             <div class="action-grid">
                 <button class="action-card" onclick="document.getElementById('message').focus()">
@@ -304,10 +313,10 @@
                     <strong>DISCUTER</strong>
                     <small>Écrire un message</small>
                 </button>
-                <button class="action-card" onclick="parler()">
+                <button class="action-card" id="btnParler" onclick="toggleParler()">
                     <span class="action-icon">🎙️</span>
-                    <strong>PARLER</strong>
-                    <small>Parler avec ma voix</small>
+                    <strong id="btnParlerLabel">PARLER</strong>
+                    <small>Conversation vocale</small>
                 </button>
                 <button class="action-card" onclick="toggleVoix()">
                     <span class="action-icon">🔊</span>
@@ -336,6 +345,8 @@ var chat = document.getElementById("chat");
 var input = document.getElementById("message");
 var sendBtn = document.getElementById("sendBtn");
 var reprendreBanner = document.getElementById("reprendreBanner");
+var btnParler = document.getElementById("btnParler");
+var btnParlerLabel = document.getElementById("btnParlerLabel");
 
 var sessionId = localStorage.getItem("hatimedia_public_session");
 if (!sessionId) {
@@ -346,13 +357,12 @@ if (!sessionId) {
 var conversationId = null;
 var enCours = false;
 var voixActive = true;
+var modeVocal = false;
+var recognitionActive = null;
 
-// ==========================================
-// 🔊 VOIX — Faire parler HATIMEDIA
-// ==========================================
-function faireParler(texte) {
+function faireParler(texte, callback) {
     if (!("speechSynthesis" in window)) {
-        console.warn("speechSynthesis non supporté");
+        if (callback) callback();
         return;
     }
 
@@ -364,19 +374,20 @@ function faireParler(texte) {
         return v.lang && v.lang.indexOf("fr") === 0;
     });
 
-    if (voixFR) {
-        voix.voice = voixFR;
-    }
+    if (voixFR) voix.voice = voixFR;
 
     voix.lang = "fr-FR";
     voix.volume = 1;
     voix.rate = 1;
     voix.pitch = 1;
 
+    voix.onend = function () {
+        if (callback) callback();
+    };
+
     window.speechSynthesis.speak(voix);
 }
 
-// Charger les voix au démarrage
 if ("speechSynthesis" in window) {
     window.speechSynthesis.getVoices();
     window.speechSynthesis.onvoiceschanged = function () {
@@ -384,9 +395,6 @@ if ("speechSynthesis" in window) {
     };
 }
 
-// ==========================================
-// 🔄 TOGGLE VOIX ON/OFF
-// ==========================================
 function toggleVoix() {
     voixActive = !voixActive;
     document.getElementById("voixEtat").textContent = voixActive ? "ON" : "OFF";
@@ -396,54 +404,107 @@ function toggleVoix() {
     }
 }
 
-// ==========================================
-// 🎙️ PARLER — Reconnaissance vocale
-// ==========================================
-function parler() {
+function toggleParler() {
+    modeVocal = !modeVocal;
+
+    if (modeVocal) {
+        btnParler.classList.add("actif");
+        btnParlerLabel.textContent = "STOP";
+        demarrerEcoute();
+    } else {
+        btnParler.classList.remove("actif");
+        btnParlerLabel.textContent = "PARLER";
+        arreterEcoute();
+    }
+}
+
+function arreterEcoute() {
+    if (recognitionActive) {
+        try { recognitionActive.abort(); } catch (e) {}
+        recognitionActive = null;
+    }
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+    input.placeholder = "Votre message...";
+}
+
+function demarrerEcoute() {
     var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
     if (!SpeechRecognition) {
         alert("🎙️ La reconnaissance vocale n'est pas disponible dans ce navigateur.\nEssayez Chrome ou Safari.");
+        modeVocal = false;
+        btnParler.classList.remove("actif");
+        btnParlerLabel.textContent = "PARLER";
         return;
     }
 
-    var recognition = new SpeechRecognition();
-    recognition.lang = "fr-FR";
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
 
-    recognition.onstart = function () {
-        input.placeholder = "🎙️ Je vous écoute...";
-    };
+    if (recognitionActive) {
+        try { recognitionActive.abort(); } catch (e) {}
+        recognitionActive = null;
+    }
 
-    recognition.onresult = function (event) {
-        var texte = event.results[0][0].transcript;
-        input.value = texte;
-        input.placeholder = "Votre message...";
-        envoyerMessage();
-    };
+    setTimeout(function () {
+        if (!modeVocal) return;
 
-    recognition.onerror = function (event) {
-        console.error("Erreur micro :", event.error);
-        input.placeholder = "Votre message...";
+        var recognition = new SpeechRecognition();
+        recognitionActive = recognition;
 
-        if (event.error === "not-allowed") {
-            alert("🎙️ Autorisez l'accès au micro dans votre navigateur.");
-        } else {
-            alert("🎙️ Impossible d'utiliser le micro : " + event.error);
+        recognition.lang = "fr-FR";
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = function () {
+            input.placeholder = "🎙️ Je vous écoute...";
+        };
+
+        recognition.onresult = function (event) {
+            var texte = event.results[0][0].transcript;
+            input.value = texte;
+            input.placeholder = "Votre message...";
+            envoyerMessage();
+        };
+
+        recognition.onerror = function (event) {
+            console.error("Erreur micro :", event.error);
+            recognitionActive = null;
+
+            if (event.error === "not-allowed") {
+                alert("🎙️ Autorisez l'accès au micro dans votre navigateur.");
+                modeVocal = false;
+                btnParler.classList.remove("actif");
+                btnParlerLabel.textContent = "PARLER";
+                return;
+            }
+
+            if (event.error === "no-speech") {
+                if (modeVocal) setTimeout(demarrerEcoute, 500);
+                return;
+            }
+
+            if (event.error === "aborted") return;
+
+            if (modeVocal) setTimeout(demarrerEcoute, 800);
+        };
+
+        recognition.onend = function () {
+            recognitionActive = null;
+            input.placeholder = "Votre message...";
+        };
+
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error("Erreur start :", e);
         }
-    };
-
-    recognition.onend = function () {
-        input.placeholder = "Votre message...";
-    };
-
-    recognition.start();
+    }, 300);
 }
 
-// ==========================================
-// VÉRIFIER L'HISTORIQUE
-// ==========================================
 async function verifierHistorique() {
     try {
         var r = await fetch("/api/chat-public/historique/" + sessionId);
@@ -459,9 +520,6 @@ async function verifierHistorique() {
     }
 }
 
-// ==========================================
-// REPRENDRE CONVERSATION
-// ==========================================
 function reprendreConversation() {
     var messages = window._messagesEnAttente;
     if (!messages) return;
@@ -479,9 +537,6 @@ function reprendreConversation() {
     input.focus();
 }
 
-// ==========================================
-// AJOUTER UN MESSAGE
-// ==========================================
 function ajouterMessage(texte, type, scroll) {
     if (scroll === undefined) scroll = true;
 
@@ -496,9 +551,6 @@ function ajouterMessage(texte, type, scroll) {
     return div;
 }
 
-// ==========================================
-// ENVOYER UN MESSAGE
-// ==========================================
 async function envoyerMessage() {
     var texte = input.value.trim();
     if (!texte || enCours) return;
@@ -536,15 +588,25 @@ async function envoyerMessage() {
             if (data.conversationId) conversationId = data.conversationId;
 
             if (voixActive) {
-                faireParler(data.reply);
+                faireParler(data.reply, function () {
+                    if (modeVocal) {
+                        setTimeout(demarrerEcoute, 300);
+                    }
+                });
+            } else {
+                if (modeVocal) {
+                    setTimeout(demarrerEcoute, 500);
+                }
             }
         } else {
             ajouterMessage("Hmm, je n'ai pas pu répondre. Réessayez !", "assistant");
+            if (modeVocal) setTimeout(demarrerEcoute, 800);
         }
     } catch (error) {
         console.error(error);
         thinking.remove();
         ajouterMessage("Connexion perdue. Vérifiez votre réseau.", "assistant");
+        if (modeVocal) setTimeout(demarrerEcoute, 1000);
     }
 
     enCours = false;
@@ -552,11 +614,11 @@ async function envoyerMessage() {
     input.focus();
 }
 
-// ==========================================
-// NOUVELLE CONVERSATION
-// ==========================================
 function nouvelleConversation() {
     if (!confirm("Démarrer une nouvelle conversation ?")) return;
+
+    modeVocal = false;
+    arreterEcoute();
 
     sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
     localStorage.setItem("hatimedia_public_session", sessionId);
@@ -565,9 +627,6 @@ function nouvelleConversation() {
     location.reload();
 }
 
-// ==========================================
-// ENTRÉE CLAVIER
-// ==========================================
 input.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
         e.preventDefault();
@@ -575,9 +634,6 @@ input.addEventListener("keydown", function (e) {
     }
 });
 
-// ==========================================
-// DÉMARRAGE
-// ==========================================
 verifierHistorique();
 input.focus();
 </script>
