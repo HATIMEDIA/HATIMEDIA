@@ -9,7 +9,12 @@ const mammoth = require("mammoth");
 const multer = require("multer");
 const { choisirAgent, determinerAction, creerAction } = require("./orchestrateur");
 const { preparerMessage, validerMessage, demanderConfirmation } = require("./outil-messagerie");
-const { envoyerEmail } = require("./gmail");
+
+
+// Gmail désactivé sur Render (credentials.json en local uniquement)
+// const { envoyerEmail } = require("./gmail");
+let envoyerEmail = async () => { throw new Error("Gmail désactivé"); };
+
 const { executerAction } = require("./moteur-actions");
 const { analyserDemandeMessagerie, extraireContenuMessage } = require("./analyse-demande");
 
