@@ -309,9 +309,9 @@
                     <strong>PARLER</strong>
                     <small>Parler avec ma voix</small>
                 </button>
-                <button class="action-card" onclick="activerVoix(!voixActive)">
+                <button class="action-card" onclick="toggleVoix()">
                     <span class="action-icon">🔊</span>
-                    <strong>VOIX <span id="voixEtat">OFF</span></strong>
+                    <strong>VOIX <span id="voixEtat">ON</span></strong>
                     <small>Réponses en audio</small>
                 </button>
                 <button class="action-card" onclick="nouvelleConversation()">
@@ -332,34 +332,82 @@
 </div>
 
 <script>
-const chat = document.getElementById("chat");
-const input = document.getElementById("message");
-const sendBtn = document.getElementById("sendBtn");
-const reprendreBanner = document.getElementById("reprendreBanner");
+var chat = document.getElementById("chat");
+var input = document.getElementById("message");
+var sendBtn = document.getElementById("sendBtn");
+var reprendreBanner = document.getElementById("reprendreBanner");
 
-let sessionId = localStorage.getItem("hatimedia_public_session");
+var sessionId = localStorage.getItem("hatimedia_public_session");
 if (!sessionId) {
     sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
     localStorage.setItem("hatimedia_public_session", sessionId);
 }
 
-let conversationId = null;
-let enCours = false;
-let historiqueCharge = false;
-let voixActive = true; // 🔊 Réponse vocale activée par défaut
+var conversationId = null;
+var enCours = false;
+var voixActive = true;
 
 // ==========================================
-// 🎙️ PARLER — Reconnaissance vocale (micro)
+// 🔊 VOIX — Faire parler HATIMEDIA
 // ==========================================
-function parler() {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-    if (!SpeechRecognition) {
-        alert("🎙️ La reconnaissance vocale n'est pas disponible dans ce navigateur.\nEssayez Chrome ou Safari (dernière version).");
+function faireParler(texte) {
+    if (!("speechSynthesis" in window)) {
+        console.warn("speechSynthesis non supporté");
         return;
     }
 
-    const recognition = new SpeechRecognition();
+    window.speechSynthesis.cancel();
+
+    var voix = new SpeechSynthesisUtterance(texte);
+    var voixDisponibles = window.speechSynthesis.getVoices();
+    var voixFR = voixDisponibles.find(function (v) {
+        return v.lang && v.lang.indexOf("fr") === 0;
+    });
+
+    if (voixFR) {
+        voix.voice = voixFR;
+    }
+
+    voix.lang = "fr-FR";
+    voix.volume = 1;
+    voix.rate = 1;
+    voix.pitch = 1;
+
+    window.speechSynthesis.speak(voix);
+}
+
+// Charger les voix au démarrage
+if ("speechSynthesis" in window) {
+    window.speechSynthesis.getVoices();
+    window.speechSynthesis.onvoiceschanged = function () {
+        window.speechSynthesis.getVoices();
+    };
+}
+
+// ==========================================
+// 🔄 TOGGLE VOIX ON/OFF
+// ==========================================
+function toggleVoix() {
+    voixActive = !voixActive;
+    document.getElementById("voixEtat").textContent = voixActive ? "ON" : "OFF";
+
+    if (!voixActive && "speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+    }
+}
+
+// ==========================================
+// 🎙️ PARLER — Reconnaissance vocale
+// ==========================================
+function parler() {
+    var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        alert("🎙️ La reconnaissance vocale n'est pas disponible dans ce navigateur.\nEssayez Chrome ou Safari.");
+        return;
+    }
+
+    var recognition = new SpeechRecognition();
     recognition.lang = "fr-FR";
     recognition.continuous = false;
     recognition.interimResults = false;
@@ -369,7 +417,7 @@ function parler() {
     };
 
     recognition.onresult = function (event) {
-        const texte = event.results[0][0].transcript;
+        var texte = event.results[0][0].transcript;
         input.value = texte;
         input.placeholder = "Votre message...";
         envoyerMessage();
@@ -394,59 +442,12 @@ function parler() {
 }
 
 // ==========================================
-// 🔊 VOIX — Activer / Désactiver les réponses vocales
-// ==========================================
-function activerVoix(active) {
-    voixActive = active;
-    document.getElementById("voixEtat").textContent = voixActive ? "ON" : "OFF";
-
-    if (!voixActive && "speechSynthesis" in window) {
-        window.speechSynthesis.cancel();
-    }
-}
-
-function faireParler(texte) {
-    if ("speechSynthesis" in window) {
-        
-    // Annule toute voix en cours
-    window.speechSynthesis.cancel();
-
-    const voix = new SpeechSynthesisUtterance(texte);
-
-    // Cherche une voix française disponible
-    const voixDisponibles = window.speechSynthesis.getVoices();
-    const voixFR = voixDisponibles.find(v => v.lang && v.lang.startsWith("fr"));
-
-    if (voixFR) {
-        voix.voice = voixFR;
-        console.log("🎙️ Voix utilisée :", voixFR.name, voixFR.lang);
-    } else {
-        console.log("🎙️ Aucune voix française, voix par défaut utilisée");
-    }
-
-    voix.lang = "fr-FR";
-    voix.volume = 1;
-    voix.rate = 1;
-    voix.pitch = 1;
-
-    window.speechSynthesis.speak(voix);
-}
-
-// Charge les voix au démarrage (obligatoire sur Chrome)
-if ("speechSynthesis" in window) {
-    window.speechSynthesis.getVoices();
-    window.speechSynthesis.onvoiceschanged = () => {
-        window.speechSynthesis.getVoices();
-    };
-}
-
-// ==========================================
-// VÉRIFIER SI UNE CONVERSATION EXISTE
+// VÉRIFIER L'HISTORIQUE
 // ==========================================
 async function verifierHistorique() {
     try {
-        const r = await fetch("/api/chat-public/historique/" + sessionId);
-        const data = await r.json();
+        var r = await fetch("/api/chat-public/historique/" + sessionId);
+        var data = await r.json();
 
         if (data.ok && data.messages && data.messages.length > 0) {
             conversationId = data.conversationId;
@@ -459,29 +460,35 @@ async function verifierHistorique() {
 }
 
 // ==========================================
-// REPRENDRE LA CONVERSATION
+// REPRENDRE CONVERSATION
 // ==========================================
 function reprendreConversation() {
-    const messages = window._messagesEnAttente;
+    var messages = window._messagesEnAttente;
     if (!messages) return;
 
-    document.getElementById("welcome")?.remove();
+    var welcome = document.getElementById("welcome");
+    if (welcome) welcome.remove();
+
     reprendreBanner.classList.remove("visible");
 
-    for (const m of messages) {
+    for (var i = 0; i < messages.length; i++) {
+        var m = messages[i];
         ajouterMessage(m.content, m.role === "user" ? "user" : "assistant", false);
     }
     chat.scrollTop = chat.scrollHeight;
-    historiqueCharge = true;
     input.focus();
 }
 
 // ==========================================
 // AJOUTER UN MESSAGE
 // ==========================================
-function ajouterMessage(texte, type, scroll = true) {
-    document.getElementById("welcome")?.remove();
-    const div = document.createElement("div");
+function ajouterMessage(texte, type, scroll) {
+    if (scroll === undefined) scroll = true;
+
+    var welcome = document.getElementById("welcome");
+    if (welcome) welcome.remove();
+
+    var div = document.createElement("div");
     div.className = "message " + type;
     div.textContent = texte;
     chat.appendChild(div);
@@ -490,10 +497,10 @@ function ajouterMessage(texte, type, scroll = true) {
 }
 
 // ==========================================
-// ENVOYER
+// ENVOYER UN MESSAGE
 // ==========================================
 async function envoyerMessage() {
-    const texte = input.value.trim();
+    var texte = input.value.trim();
     if (!texte || enCours) return;
 
     enCours = true;
@@ -504,14 +511,14 @@ async function envoyerMessage() {
     ajouterMessage(texte, "user");
     input.value = "";
 
-    const thinking = document.createElement("div");
+    var thinking = document.createElement("div");
     thinking.className = "thinking";
     thinking.textContent = "HATIMEDIA réfléchit...";
     chat.appendChild(thinking);
     chat.scrollTop = chat.scrollHeight;
 
     try {
-        const r = await fetch("/api/chat-public", {
+        var r = await fetch("/api/chat-public", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -521,14 +528,13 @@ async function envoyerMessage() {
             })
         });
 
-        const data = await r.json();
+        var data = await r.json();
         thinking.remove();
 
         if (data.reply) {
             ajouterMessage(data.reply, "assistant");
             if (data.conversationId) conversationId = data.conversationId;
 
-            // 🔊 Si la voix est activée, HATIMEDIA lit sa réponse
             if (voixActive) {
                 faireParler(data.reply);
             }
@@ -549,24 +555,20 @@ async function envoyerMessage() {
 // ==========================================
 // NOUVELLE CONVERSATION
 // ==========================================
-async function nouvelleConversation() {
+function nouvelleConversation() {
     if (!confirm("Démarrer une nouvelle conversation ?")) return;
 
     sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
     localStorage.setItem("hatimedia_public_session", sessionId);
     conversationId = null;
-    historiqueCharge = false;
-    window._messagesEnAttente = null;
-    reprendreBanner.classList.remove("visible");
 
-    // 🔄 Recharge l'accueil avec les cartes
     location.reload();
 }
 
 // ==========================================
 // ENTRÉE CLAVIER
 // ==========================================
-input.addEventListener("keydown", (e) => {
+input.addEventListener("keydown", function (e) {
     if (e.key === "Enter") {
         e.preventDefault();
         envoyerMessage();
