@@ -1,4 +1,4 @@
-const { envoyerEmail } = require("./gmail");
+// const { envoyerEmail } = require("./gmail");
 
 async function executerAction(action) {
     if (!action) {
