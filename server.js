@@ -30,7 +30,8 @@ app.use(express.static("public"));
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const NEON_URL = "postgresql://neondb_owner:npg_Mgj98WxFaJUY@ep-rapid-silence-b2r6id56-pooler.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+const pool = new Pool({ connectionString: NEON_URL, ssl: { rejectUnauthorized: false } });
 
 
 // Page de chat publique (sans login)
