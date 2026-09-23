@@ -1000,8 +1000,60 @@ app.get("/api/chat-public/historique/:sessionId", async (req, res) => {
     }
 });
 
-
 // ========================================
+// RÉACTIONS AUX MESSAGES
+// ========================================
+
+app.post("/api/react", async (req, res) => {
+    try {
+        const { messageId, reaction, sessionId } = req.body;
+
+        if (!messageId || !reaction || !sessionId) {
+            return res.status(400).json({ ok: false, error: "Paramètres manquants." });
+        }
+
+        const autorisees = ["👍", "❤️", "😂"];
+        if (!autorisees.includes(reaction)) {
+            return res.status(400).json({ ok: false, error: "Réaction invalide." });
+        }
+
+        // Vérifier si une réaction existe déjà pour ce message par cette session
+        const exist = await pool.query(
+            `SELECT id, reaction_type FROM reactions
+             WHERE message_id = $1 AND session_id = $2`,
+            [messageId, sessionId]
+        );
+
+        if (exist.rows.length > 0) {
+            // Si même réaction → on la retire (toggle)
+            if (exist.rows[0].reaction_type === reaction) {
+                await pool.query(
+                    `DELETE FROM reactions WHERE id = $1`,
+                    [exist.rows[0].id]
+                );
+                return res.json({ ok: true, action: "removed" });
+            }
+            // Sinon → on met à jour
+            await pool.query(
+                `UPDATE reactions SET reaction_type = $1 WHERE id = $2`,
+                [reaction, exist.rows[0].id]
+            );
+            return res.json({ ok: true, action: "updated" });
+        }
+
+        // Sinon → on crée
+        await pool.query(
+            `INSERT INTO reactions (message_id, reaction_type, session_id)
+             VALUES ($1, $2, $3)`,
+            [messageId, reaction, sessionId]
+        );
+        res.json({ ok: true, action: "created" });
+
+    } catch (error) {
+        console.error("❌ Erreur réaction :", error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});// ========================================
 // DÉMARRAGE DU SERVEUR
 // ========================================
 
