@@ -953,14 +953,13 @@ app.post("/api/chat-public", async (req, res) => {
 
         const reply = response.output_text;
 
-        const insertedMsg = await pool.query(
+        await pool.query(
             `INSERT INTO messages (conversation_id, role, content)
-             VALUES ($1, $2, $3)
-             RETURNING id`,
+             VALUES ($1, $2, $3)`,
             [conversationId, "assistant", reply]
         );
 
-        res.json({ ok: true, reply, conversationId, messageId: insertedMsg.rows[0].id });
+        res.json({ ok: true, reply, conversationId });
 
     } catch (error) {
         console.error("❌ Erreur chat public :", error);
@@ -968,4 +967,46 @@ app.post("/api/chat-public", async (req, res) => {
     }
 });
 
-app.get("/api/chat-public/historique/:sessionId", async (req
+app.get("/api/chat-public/historique/:sessionId", async (req, res) => {
+    try {
+        const sessionId = req.params.sessionId;
+        const userId = await getOrCreateAnonymousUser(sessionId);
+
+        const conv = await pool.query(
+            `SELECT id FROM conversations WHERE user_id = $1
+             ORDER BY created_at DESC LIMIT 1`,
+            [userId]
+        );
+
+        if (conv.rows.length === 0) {
+            return res.json({ ok: true, messages: [], conversationId: null });
+        }
+
+        const conversationId = conv.rows[0].id;
+        const msgs = await pool.query(
+            `SELECT role, content FROM messages
+             WHERE conversation_id = $1 ORDER BY created_at ASC`,
+            [conversationId]
+        );
+
+        res.json({
+            ok: true,
+            conversationId,
+            messages: msgs.rows
+        });
+    } catch (error) {
+        console.error("❌ Erreur historique public :", error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
+
+
+// ========================================
+// DÉMARRAGE DU SERVEUR
+// ========================================
+
+const PORT = process.env.PORT || 3000;
+
+app.listen(PORT, "0.0.0.0", () => {
+    console.log("Serveur démarré sur le port " + PORT);
+});
