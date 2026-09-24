@@ -953,112 +953,15 @@ app.post("/api/chat-public", async (req, res) => {
 
         const reply = response.output_text;
 
-        await pool.query(
+        const insertedMsg = await pool.query(
             `INSERT INTO messages (conversation_id, role, content)
-             VALUES ($1, $2, $3)`,
+             VALUES ($1, $2, $3)
+             RETURNING id`,
             [conversationId, "assistant", reply]
         );
 
-        res.json({ ok: true, reply, conversationId });
+        res.json({ ok: true, reply, conversationId, messageId: insertedMsg.rows[0].id });
 
     } catch (error) {
         console.error("❌ Erreur chat public :", error);
-        res.status(500).json({ ok: false, error: "Erreur serveur." });
-    }
-});
-
-app.get("/api/chat-public/historique/:sessionId", async (req, res) => {
-    try {
-        const sessionId = req.params.sessionId;
-        const userId = await getOrCreateAnonymousUser(sessionId);
-
-        const conv = await pool.query(
-            `SELECT id FROM conversations WHERE user_id = $1
-             ORDER BY created_at DESC LIMIT 1`,
-            [userId]
-        );
-
-        if (conv.rows.length === 0) {
-            return res.json({ ok: true, messages: [], conversationId: null });
-        }
-
-        const conversationId = conv.rows[0].id;
-        const msgs = await pool.query(
-            `SELECT role, content FROM messages
-             WHERE conversation_id = $1 ORDER BY created_at ASC`,
-            [conversationId]
-        );
-
-        res.json({
-            ok: true,
-            conversationId,
-            messages: msgs.rows
-        });
-    } catch (error) {
-        console.error("❌ Erreur historique public :", error);
-        res.status(500).json({ ok: false, error: "Erreur serveur." });
-    }
-});
-
-// ========================================
-// RÉACTIONS AUX MESSAGES
-// ========================================
-
-app.post("/api/react", async (req, res) => {
-    try {
-        const { messageId, reaction, sessionId } = req.body;
-
-        if (!messageId || !reaction || !sessionId) {
-            return res.status(400).json({ ok: false, error: "Paramètres manquants." });
-        }
-
-        const autorisees = ["👍", "❤️", "😂"];
-        if (!autorisees.includes(reaction)) {
-            return res.status(400).json({ ok: false, error: "Réaction invalide." });
-        }
-
-        // Vérifier si une réaction existe déjà pour ce message par cette session
-        const exist = await pool.query(
-            `SELECT id, reaction_type FROM reactions
-             WHERE message_id = $1 AND session_id = $2`,
-            [messageId, sessionId]
-        );
-
-        if (exist.rows.length > 0) {
-            // Si même réaction → on la retire (toggle)
-            if (exist.rows[0].reaction_type === reaction) {
-                await pool.query(
-                    `DELETE FROM reactions WHERE id = $1`,
-                    [exist.rows[0].id]
-                );
-                return res.json({ ok: true, action: "removed" });
-            }
-            // Sinon → on met à jour
-            await pool.query(
-                `UPDATE reactions SET reaction_type = $1 WHERE id = $2`,
-                [reaction, exist.rows[0].id]
-            );
-            return res.json({ ok: true, action: "updated" });
-        }
-
-        // Sinon → on crée
-        await pool.query(
-            `INSERT INTO reactions (message_id, reaction_type, session_id)
-             VALUES ($1, $2, $3)`,
-            [messageId, reaction, sessionId]
-        );
-        res.json({ ok: true, action: "created" });
-
-    } catch (error) {
-        console.error("❌ Erreur réaction :", error);
-        res.status(500).json({ ok: false, error: "Erreur serveur." });
-    }
-});// ========================================
-// DÉMARRAGE DU SERVEUR
-// ========================================
-
-const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, "0.0.0.0", () => {
-    console.log("Serveur démarré sur le port " + PORT);
-});
+        res.status(500).json({ ok: false, error: "Erreur serveur."
