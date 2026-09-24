@@ -221,6 +221,54 @@
             box-shadow: 0 2px 8px rgba(0,0,0,.06);
         }
 
+        .message-wrapper {
+            display: flex;
+            flex-direction: column;
+            max-width: 78%;
+        }
+
+        .message-wrapper.user {
+            align-self: flex-end;
+            align-items: flex-end;
+        }
+
+        .message-wrapper.assistant {
+            align-self: flex-start;
+            align-items: flex-start;
+        }
+
+        .message-wrapper .message {
+            max-width: 100%;
+        }
+
+        .reactions {
+            display: flex;
+            gap: 6px;
+            margin-top: 6px;
+            margin-left: 4px;
+        }
+
+        .reaction-btn {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid #e2e7f0;
+            border-radius: 14px;
+            padding: 4px 10px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: transform .15s, background .15s;
+            box-shadow: 0 2px 6px rgba(0,0,0,.05);
+        }
+
+        .reaction-btn:hover {
+            transform: scale(1.15);
+            background: #fff;
+        }
+
+        .reaction-btn.actif {
+            background: #2563eb;
+            border-color: #2563eb;
+        }
+
         .input-area {
             padding: 12px 16px;
             background: rgba(255, 255, 255, 0.95);
@@ -531,24 +579,76 @@ function reprendreConversation() {
 
     for (var i = 0; i < messages.length; i++) {
         var m = messages[i];
-        ajouterMessage(m.content, m.role === "user" ? "user" : "assistant", false);
+        ajouterMessage(m.content, m.role === "user" ? "user" : "assistant", false, null);
     }
     chat.scrollTop = chat.scrollHeight;
     input.focus();
 }
 
-function ajouterMessage(texte, type, scroll) {
+function ajouterMessage(texte, type, scroll, messageId) {
     if (scroll === undefined) scroll = true;
 
     var welcome = document.getElementById("welcome");
     if (welcome) welcome.remove();
 
+    var wrapper = document.createElement("div");
+    wrapper.className = "message-wrapper " + type;
+
     var div = document.createElement("div");
     div.className = "message " + type;
     div.textContent = texte;
-    chat.appendChild(div);
+    wrapper.appendChild(div);
+
+    if (type === "assistant" && messageId) {
+        var reactionsDiv = document.createElement("div");
+        reactionsDiv.className = "reactions";
+
+        var emojis = ["👍", "❤️", "😂"];
+        emojis.forEach(function (emoji) {
+            var btn = document.createElement("button");
+            btn.className = "reaction-btn";
+            btn.textContent = emoji;
+            btn.onclick = function () {
+                envoyerReaction(messageId, emoji, btn);
+            };
+            reactionsDiv.appendChild(btn);
+        });
+
+        wrapper.appendChild(reactionsDiv);
+    }
+
+    chat.appendChild(wrapper);
     if (scroll) chat.scrollTop = chat.scrollHeight;
-    return div;
+    return wrapper;
+}
+
+async function envoyerReaction(messageId, reaction, btn) {
+    try {
+        var r = await fetch("/api/react", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                messageId: messageId,
+                reaction: reaction,
+                sessionId: sessionId
+            })
+        });
+
+        var data = await r.json();
+
+        if (data.ok) {
+            var parent = btn.parentElement;
+            parent.querySelectorAll(".reaction-btn").forEach(function (b) {
+                b.classList.remove("actif");
+            });
+
+            if (data.action === "created" || data.action === "updated") {
+                btn.classList.add("actif");
+            }
+        }
+    } catch (error) {
+        console.error("Erreur envoi réaction :", error);
+    }
 }
 
 async function envoyerMessage() {
@@ -584,7 +684,7 @@ async function envoyerMessage() {
         thinking.remove();
 
         if (data.reply) {
-            ajouterMessage(data.reply, "assistant");
+            ajouterMessage(data.reply, "assistant", true, data.messageId);
             if (data.conversationId) conversationId = data.conversationId;
 
             if (voixActive) {
@@ -639,4 +739,5 @@ input.focus();
 </script>
 
 </body>
+</html>
 </html>
