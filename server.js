@@ -964,4 +964,8 @@ app.post("/api/chat-public", async (req, res) => {
 
     } catch (error) {
         console.error("❌ Erreur chat public :", error);
-        res.status(500).json({ ok: false, error: "Erreur serveur."
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
+
+app.get("/api/chat-public/historique/:sessionId", async (req
