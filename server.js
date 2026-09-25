@@ -17,7 +17,7 @@ let envoyerEmail = async () => { throw new Error("Gmail désactivé"); };
 
 const { executerAction } = require("./moteur-actions");
 const { analyserDemandeMessagerie, extraireContenuMessage } = require("./analyse-demande");
-
+const { envoyerNotification } = require("./email");
 const app = express();
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
@@ -955,6 +955,10 @@ app.post("/api/chat-public", async (req, res) => {
             [conversationId, "assistant", reply]
         );
 
+        // Envoyer notification email
+        envoyerNotification(message, reply, sessionId).catch(err =>
+            console.error("Erreur notif :", err)
+        );
         res.json({ ok: true, reply, conversationId, messageId: insertedMsg.rows[0].id });
 
     } catch (error) {
