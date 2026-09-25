@@ -653,6 +653,76 @@ async function chargerCompteurs(messageId, reactionsDiv) {
     }
 }
 
+
+
+async function envoyerReaction(messageId, reaction, btn) {
+    try {
+        var r = await fetch("/api/react", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                messageId: messageId,
+                reaction: reaction,
+                sessionId: sessionId
+            })
+        });
+
+        var data = await r.json();
+
+        if (data.ok) {
+            var parent = btn.parentElement;
+            parent.querySelectorAll(".reaction-btn").forEach(function (b) {
+                b.classList.remove("actif");
+            });
+
+            if (data.action === "created" || data.action === "updated") {
+                btn.classList.add("actif");
+            }
+
+            var reactionsDiv = btn.parentElement;
+            chargerCompteurs(messageId, reactionsDiv);
+        }
+    } catch (error) {
+        console.error("Erreur envoi réaction :", error);
+    }
+}
+
+
+async function envoyerReaction(messageId, reaction, btn) {
+    try {
+        var r = await fetch("/api/react", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                messageId: messageId,
+                reaction: reaction,
+                sessionId: sessionId
+            })
+        });
+
+        var data = await r.json();
+
+        if (data.ok) {
+            var parent = btn.parentElement;
+            parent.querySelectorAll(".reaction-btn").forEach(function (b) {
+                b.classList.remove("actif");
+            });
+
+            if (data.action === "created" || data.action === "updated") {
+                btn.classList.add("actif");
+            }
+
+            var reactionsDiv = btn.parentElement;
+            chargerCompteurs(messageId, reactionsDiv);
+        }
+    } catch (error) {
+        console.error("Erreur envoi réaction :", error);
+    }
+}
+
+
+
+
 async function envoyerMessage() {
     var texte = input.value.trim();
     if (!texte || enCours) return;
