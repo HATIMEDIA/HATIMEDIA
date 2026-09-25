@@ -1009,7 +1009,7 @@ app.post("/api/react", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Paramètres manquants." });
         }
 
-        const autorisees = ["👍", "❤️", "😂"];
+        const autorisees = ["👍", "❤️", "😂", "😍", "🎉", "🔥", "👏"];
         if (!autorisees.includes(reaction)) {
             return res.status(400).json({ ok: false, error: "Réaction invalide." });
         }
