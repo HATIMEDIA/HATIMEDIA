@@ -602,6 +602,7 @@ function ajouterMessage(texte, type, scroll, messageId) {
     if (type === "assistant" && messageId) {
         var reactionsDiv = document.createElement("div");
         reactionsDiv.className = "reactions";
+        reactionsDiv.dataset.messageId = messageId;
 
         var emojis = ["👍", "❤️", "😂", "😍", "🎉", "🔥", "👏"];
         emojis.forEach(function (emoji) {
@@ -615,6 +616,9 @@ function ajouterMessage(texte, type, scroll, messageId) {
         });
 
         wrapper.appendChild(reactionsDiv);
+
+        // Charger les compteurs
+        chargerCompteurs(messageId, reactionsDiv);
     }
 
     chat.appendChild(wrapper);
@@ -622,32 +626,30 @@ function ajouterMessage(texte, type, scroll, messageId) {
     return wrapper;
 }
 
-async function envoyerReaction(messageId, reaction, btn) {
+async function chargerCompteurs(messageId, reactionsDiv) {
     try {
-        var r = await fetch("/api/react", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                messageId: messageId,
-                reaction: reaction,
-                sessionId: sessionId
-            })
-        });
-
+        var r = await fetch("/api/reactions/" + messageId);
         var data = await r.json();
 
-        if (data.ok) {
-            var parent = btn.parentElement;
-            parent.querySelectorAll(".reaction-btn").forEach(function (b) {
-                b.classList.remove("actif");
-            });
+        if (data.ok && data.reactions) {
+            // Supprimer l'ancien affichage s'il existe
+            var existing = reactionsDiv.querySelector(".reaction-counts");
+            if (existing) existing.remove();
 
-            if (data.action === "created" || data.action === "updated") {
-                btn.classList.add("actif");
-            }
+            var cles = Object.keys(data.reactions);
+            if (cles.length === 0) return;
+
+            var counts = document.createElement("div");
+            counts.className = "reaction-counts";
+            cles.forEach(function (emoji) {
+                var span = document.createElement("span");
+                span.textContent = emoji + " " + data.reactions[emoji];
+                counts.appendChild(span);
+            });
+            reactionsDiv.appendChild(counts);
         }
     } catch (error) {
-        console.error("Erreur envoi réaction :", error);
+        console.error("Erreur chargement compteurs :", error);
     }
 }
 
