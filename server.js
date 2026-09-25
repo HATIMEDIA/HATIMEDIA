@@ -1050,6 +1050,42 @@ app.post("/api/react", async (req, res) => {
 
 
 // ========================================
+// COMPTER LES RÉACTIONS D'UN MESSAGE
+// ========================================
+
+app.get("/api/reactions/:messageId", async (req, res) => {
+    try {
+        const messageId = parseInt(req.params.messageId);
+
+        if (!messageId) {
+            return res.status(400).json({ ok: false, error: "messageId invalide." });
+        }
+
+        const result = await pool.query(
+            `SELECT reaction_type, COUNT(*) AS nb
+             FROM reactions
+             WHERE message_id = $1
+             GROUP BY reaction_type`,
+            [messageId]
+        );
+
+        const comptes = {};
+        for (const row of result.rows) {
+            comptes[row.reaction_type] = parseInt(row.nb);
+        }
+
+        res.json({ ok: true, messageId, reactions: comptes });
+
+    } catch (error) {
+        console.error("❌ Erreur comptage réactions :", error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
+
+
+
+
+// ========================================
 // DÉMARRAGE DU SERVEUR
 // ========================================
 
