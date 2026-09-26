@@ -1,32 +1,20 @@
-const nodemailer = require("nodemailer");
+const { Resend } = require("resend");
 
-const transporter = nodemailer.createTransport({
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true,
-    auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD
-    },
-    family: 4,
-    connectionTimeout: 10000,
-    greetingTimeout: 10000,
-    socketTimeout: 10000
-});
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 async function envoyerNotification(message, reponse, sessionId) {
     try {
-        if (!process.env.GMAIL_USER || !process.env.GMAIL_APP_PASSWORD) {
-            console.log("⚠️ Email non configuré (variables manquantes)");
+        if (!process.env.RESEND_API_KEY) {
+            console.log("⚠️ Email non configuré (RESEND_API_KEY manquante)");
             return;
         }
 
         const date = new Date().toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
 
-        await transporter.sendMail({
-            from: `"HATIMEDIA Notif" <${process.env.GMAIL_USER}>`,
-            to: process.env.GMAIL_USER,
-            subject: `📩 Nouveau message sur HATIMEDIA`,
+        await resend.emails.send({
+            from: "HATIMEDIA <onboarding@resend.dev>",
+            to: process.env.GMAIL_USER || "hatimedia31@gmail.com",
+            subject: "📩 Nouveau message sur HATIMEDIA",
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
                     <h2 style="color: #4ade80;">📩 Nouveau message reçu</h2>
@@ -49,7 +37,7 @@ async function envoyerNotification(message, reponse, sessionId) {
             `
         });
 
-        console.log("✅ Notification email envoyée");
+        console.log("✅ Notification email envoyée via Resend");
     } catch (error) {
         console.error("❌ Erreur envoi email :", error.message);
     }
