@@ -13,7 +13,7 @@ async function envoyerNotification(message, reponse, sessionId) {
 
         await resend.emails.send({
             from: "HATIMEDIA <onboarding@resend.dev>",
-            to: process.env.GMAIL_USER || "hatimedia31@gmail.com",
+            to: "hatimedia@hotmail.com",
             subject: "📩 Nouveau message sur HATIMEDIA",
             html: `
                 <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
