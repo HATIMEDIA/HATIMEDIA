@@ -12,9 +12,12 @@ async function envoyerMessageWhatsApp(numeroDestinataire, contenu) {
             return;
         }
 
+        // Nettoyer le numéro : retirer "whatsapp:" s'il est déjà présent
+        const numeroPropre = numeroDestinataire.replace("whatsapp:", "");
+
         const message = await client.messages.create({
             from: `whatsapp:${process.env.TWILIO_WHATSAPP_NUMBER}`,
-            to: `whatsapp:${numeroDestinataire}`,
+            to: `whatsapp:${numeroPropre}`,
             body: contenu
         });
 

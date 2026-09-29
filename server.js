@@ -31,6 +31,9 @@ app.use(express.json({
         req.rawBody = buf;
     }
 }));
+
+
+app.use(express.urlencoded({ extended: true }));   // ← NOUVELLE LIGNE
 app.use(express.static("public"));
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
