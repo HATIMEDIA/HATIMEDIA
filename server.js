@@ -23,6 +23,7 @@ const { analyserDemandeMessagerie, extraireContenuMessage } = require("./analyse
 const { envoyerNotification } = require("./email");
 const { envoyerNotificationDiscord } = require("./discord");
 const { envoyerMessageWhatsApp } = require("./whatsapp");
+const { rechercherDansBase } = require("./rag");
 const app = express();
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
@@ -1098,6 +1099,21 @@ app.get("/api/reactions/:messageId", async (req, res) => {
     } catch (error) {
         console.error("❌ Erreur comptage réactions :", error);
         res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
+
+
+// ========================================
+// RECHERCHE RAG (base de connaissances)
+// ========================================
+
+app.get("/api/rag-test", async (req, res) => {
+    try {
+        const question = req.query.q || "test";
+        const resultats = await rechercherDansBase(question, 3);
+        res.json({ ok: true, question, resultats });
+    } catch (error) {
+        res.status(500).json({ ok: false, error: error.message });
     }
 });
 
