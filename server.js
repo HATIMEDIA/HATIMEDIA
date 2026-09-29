@@ -1177,9 +1177,14 @@ app.post("/webhook-whatsapp", async (req, res) => {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
 
-        res.status(200).contentType("text/xml").send(
+           res.status(200).contentType("text/xml").send(
             `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${replySafe}</Message></Response>`
         );
+    } catch (error) {
+        console.error("❌ Erreur webhook WhatsApp :", error);
+        res.status(200).send("<Response></Response>");
+    }
+});
 
 
 // ========================================
