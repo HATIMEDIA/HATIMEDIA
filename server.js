@@ -23,7 +23,7 @@ const { analyserDemandeMessagerie, extraireContenuMessage } = require("./analyse
 const { envoyerNotification } = require("./email");
 const { envoyerNotificationDiscord } = require("./discord");
 const { envoyerMessageWhatsApp } = require("./whatsapp");
-const { rechercherDansBase } = require("./rag");
+const { rechercherDansBase, getContexteRAG } = require("./rag");
 const app = express();
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
@@ -274,6 +274,8 @@ async function enregistrerSouvenir(userId, memory, memoryType) {
 
 async function detecterSouvenir(message) {
     if (!message || typeof message !== "string") return null;
+            // Recherche dans la base de connaissances (RAG)
+    const contexteRAG = await getContexteRAG(message);
 
     const response = await client.responses.create({
         model: "gpt-5",
@@ -949,6 +951,7 @@ app.post("/api/chat-public", async (req, res) => {
                 "Tu peux utiliser des emojis avec parcimonie. " +
                 "Sois vivant, complice et drôle quand c'est approprié. " +
                 "Cette personne ne te connaît pas encore : sois accueillant.",
+            contexteRAG,
             input: historique.rows.slice(-6).map(m => ({
                 role: m.role,
                 content: m.content
