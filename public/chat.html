@@ -603,6 +603,27 @@ function ajouterMessage(texte, type, scroll, messageId) {
         var reactionsDiv = document.createElement("div");
         reactionsDiv.className = "reactions";
         reactionsDiv.dataset.messageId = messageId;
+        
+        // Bouton Copier
+        var btnCopier = document.createElement("button");
+        btnCopier.className = "reaction-btn";
+        btnCopier.textContent = "📋 Copier";
+        btnCopier.onclick = function () {
+            navigator.clipboard.writeText(texte).then(function () {
+                btnCopier.textContent = "✅ Copié !";
+                setTimeout(function () {
+                    btnCopier.textContent = "📋 Copier";
+                }, 1500);
+            }).catch(function (err) {
+                console.error("Erreur copie :", err);
+                btnCopier.textContent = "❌ Erreur";
+                setTimeout(function () {
+                    btnCopier.textContent = "📋 Copier";
+                }, 1500);
+            });
+        };
+        reactionsDiv.appendChild(btnCopier);
+
 
         var emojis = ["👍", "❤️", "😂", "😍", "🎉", "🔥", "👏"];
         emojis.forEach(function (emoji) {
