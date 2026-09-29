@@ -22,6 +22,7 @@ const { executerAction } = require("./moteur-actions");
 const { analyserDemandeMessagerie, extraireContenuMessage } = require("./analyse-demande");
 const { envoyerNotification } = require("./email");
 const { envoyerNotificationDiscord } = require("./discord");
+const { envoyerMessageWhatsApp } = require("./whatsapp");
 const app = express();
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
@@ -1097,6 +1098,85 @@ app.get("/api/reactions/:messageId", async (req, res) => {
     }
 });
 
+
+
+// ========================================
+// WEBHOOK WHATSAPP (Twilio)
+// ========================================
+
+app.post("/webhook-whatsapp", async (req, res) => {
+    try {
+        const messageBody = (req.body.Body || "").trim();
+        const expediteur = req.body.From;
+        const sessionIdWa = "wa_" + expediteur.replace(/[^0-9]/g, "").slice(-10);
+
+        console.log("📱 WhatsApp reçu de", expediteur, ":", messageBody);
+
+        if (!messageBody) {
+            return res.status(200).send("<Response></Response>");
+        }
+
+        // Réutilise la logique du chat public
+        const userId = await getOrCreateAnonymousUser(sessionIdWa);
+
+        let conversationId = null;
+        const conv = await pool.query(
+            `SELECT id FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+            [userId]
+        );
+        if (conv.rows.length > 0) conversationId = conv.rows[0].id;
+
+        if (!conversationId) {
+            const nouvelle = await pool.query(
+                `INSERT INTO conversations (user_id, title) VALUES ($1, $2) RETURNING id`,
+                [userId, "Chat WhatsApp"]
+            );
+            conversationId = nouvelle.rows[0].id;
+        }
+
+        await pool.query(
+            `INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)`,
+            [conversationId, "user", messageBody]
+        );
+
+        const historique = await pool.query(
+            `SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`,
+            [conversationId]
+        );
+
+        const response = await client.responses.create({
+            model: "gpt-5",
+            instructions:
+                "Tu es HATIMEDIA, un assistant IA personnel sur WhatsApp. " +
+                "Réponds en français de façon naturelle, chaleureuse, concise et amicale. " +
+                "Va droit au but (2-4 phrases sauf demande explicite). " +
+                "Cette personne te contacte par WhatsApp : sois accueillant.",
+            input: historique.rows.slice(-6).map(m => ({
+                role: m.role,
+                content: m.content
+            }))
+        });
+
+        const reply = response.output_text;
+
+        await pool.query(
+            `INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)`,
+            [conversationId, "assistant", reply]
+        );
+
+        // Envoi de la réponse sur WhatsApp
+        await envoyerMessageWhatsApp(expediteur, reply);
+
+        // Notification Discord + Email
+        envoyerNotificationDiscord(messageBody, reply, sessionIdWa).catch(() => {});
+        envoyerNotification(messageBody, reply, sessionIdWa).catch(() => {});
+
+        res.status(200).send("<Response></Response>");
+    } catch (error) {
+        console.error("❌ Erreur webhook WhatsApp :", error);
+        res.status(200).send("<Response></Response>");
+    }
+});
 
 
 
