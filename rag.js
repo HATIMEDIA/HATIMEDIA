@@ -1,8 +1,9 @@
 const { Pool } = require("pg");
 const OpenAI = require("openai");
 
+const NEON_URL = "postgresql://neondb_owner:npg_Mgj98WxFaJUY@ep-rapid-silence-b2r6id56-pooler.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL || "postgresql://neondb_owner:npg_Mgj98WxFaJUY@ep-rapid-silence-b2r6id56-pooler.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=require",
+    connectionString: NEON_URL,
     ssl: { rejectUnauthorized: false }
 });
 
