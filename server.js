@@ -942,7 +942,7 @@ app.post("/api/chat-public", async (req, res) => {
             [conversationId]
         );
 
-        const response = await client.responses.create({
+               const response = await client.responses.create({
             model: "gpt-5",
             instructions:
                 "Tu es HATIMEDIA, un assistant IA personnel. " +
@@ -957,7 +957,6 @@ app.post("/api/chat-public", async (req, res) => {
                 content: m.content
             }))
         });
-
         const reply = response.output_text;
 
         const insertedMsg = await pool.query(
