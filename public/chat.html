@@ -316,6 +316,71 @@
         .send:hover { background: #1d4ed8; transform: scale(1.05); }
         .send:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
 
+                body.dark {
+            background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
+        }
+
+        body.dark .app {
+            background: rgba(17, 24, 39, 0.92);
+        }
+
+        body.dark .chat {
+            background: transparent;
+        }
+
+        body.dark .welcome {
+            background: rgba(30, 41, 59, 0.85);
+            color: #cbd5e1;
+        }
+
+        body.dark .welcome h2,
+        body.dark .welcome h3 {
+            color: #e0e6ed;
+        }
+
+        body.dark .message.assistant,
+        body.dark .thinking {
+            background: rgba(30, 41, 59, 0.95);
+            color: #e0e6ed;
+        }
+
+        body.dark .input-area,
+        body.dark footer {
+            background: rgba(17, 24, 39, 0.95);
+            border-top-color: #1f2937;
+        }
+
+        body.dark #message {
+            background: #1f2937;
+            border-color: #334155;
+            color: #e0e6ed;
+        }
+
+        body.dark .action-card {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e0e6ed;
+        }
+
+        body.dark .action-card strong {
+            color: #e0e6ed;
+        }
+
+        body.dark .reaction-btn {
+            background: rgba(30, 41, 59, 0.9);
+            border-color: #334155;
+            color: #e0e6ed;
+        }
+
+        body.dark .reaction-counts span {
+            background: rgba(51, 65, 85, 0.5);
+        }
+
+        body.dark .header-banner {
+            background: #000;
+        }
+
+
         footer {
             padding: 10px 16px 14px;
             text-align: center;
@@ -333,6 +398,7 @@
 <div class="app">
     <header class="header-banner">
         <img src="/fond-chat.jpg" alt="HATIMEDIA" class="header-image">
+        <button class="reset" id="btnTheme" onclick="toggleTheme()" style="right: 120px;">🌙</button>
         <button class="reset" onclick="nouvelleConversation()">Nouveau</button>
     </header>
 
@@ -390,6 +456,23 @@
 
 <script>
 var chat = document.getElementById("chat");
+
+// Mode sombre
+function toggleTheme() {
+    document.body.classList.toggle("dark");
+    var isDark = document.body.classList.contains("dark");
+    localStorage.setItem("hatimedia_theme", isDark ? "dark" : "light");
+    document.getElementById("btnTheme").textContent = isDark ? "☀️" : "🌙";
+}
+
+// Charger le thème sauvegardé
+(function chargerTheme() {
+    var theme = localStorage.getItem("hatimedia_theme");
+    if (theme === "dark") {
+        document.body.classList.add("dark");
+    }
+})();
+
 var input = document.getElementById("message");
 var sendBtn = document.getElementById("sendBtn");
 var reprendreBanner = document.getElementById("reprendreBanner");
@@ -603,7 +686,7 @@ function ajouterMessage(texte, type, scroll, messageId) {
         var reactionsDiv = document.createElement("div");
         reactionsDiv.className = "reactions";
         reactionsDiv.dataset.messageId = messageId;
-        
+
         // Bouton Copier
         var btnCopier = document.createElement("button");
         btnCopier.className = "reaction-btn";
@@ -826,6 +909,14 @@ input.addEventListener("keydown", function (e) {
         envoyerMessage();
     }
 });
+
+// Mettre à jour l'icône du bouton thème
+(function majIconeTheme() {
+    var theme = localStorage.getItem("hatimedia_theme");
+    var btn = document.getElementById("btnTheme");
+    if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
+})();
+
 
 verifierHistorique();
 input.focus();
