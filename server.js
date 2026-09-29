@@ -1167,20 +1167,19 @@ app.post("/webhook-whatsapp", async (req, res) => {
             [conversationId, "assistant", reply]
         );
 
-        // Envoi de la réponse sur WhatsApp
-        await envoyerMessageWhatsApp(expediteur, reply);
-
-        // Notification Discord + Email
+               // Notifications Discord + Email
         envoyerNotificationDiscord(messageBody, reply, sessionIdWa).catch(() => {});
         envoyerNotification(messageBody, reply, sessionIdWa).catch(() => {});
 
-        res.status(200).send("<Response></Response>");
-    } catch (error) {
-        console.error("❌ Erreur webhook WhatsApp :", error);
-        res.status(200).send("<Response></Response>");
-    }
-});
+        // Répondre via TwiML (Twilio envoie automatiquement sur WhatsApp)
+        const replySafe = reply
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;");
 
+        res.status(200).contentType("text/xml").send(
+            `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${replySafe}</Message></Response>`
+        );
 
 
 // ========================================
