@@ -1206,6 +1206,106 @@ app.post("/webhook-whatsapp", async (req, res) => {
 
 
 // ========================================
+// PARTAGE DE CONVERSATION
+// ========================================
+
+app.get("/share/:sessionId", async (req, res) => {
+    try {
+        const sessionId = req.params.sessionId;
+        const userId = await getOrCreateAnonymousUser(sessionId);
+
+        // Récupérer la conversation
+        const conv = await pool.query(
+            `SELECT id, title, created_at FROM conversations
+             WHERE user_id = $1
+             ORDER BY created_at DESC LIMIT 1`,
+            [userId]
+        );
+
+        if (conv.rows.length === 0) {
+            return res.status(404).send("Conversation introuvable");
+        }
+
+        const conversationId = conv.rows[0].id;
+        const titre = conv.rows[0].title || "Conversation";
+
+        // Récupérer les messages
+        const msgs = await pool.query(
+            `SELECT role, content, created_at FROM messages
+             WHERE conversation_id = $1 ORDER BY created_at ASC`,
+            [conversationId]
+        );
+
+        // Construire les bulles HTML
+        let bulles = "";
+        for (const m of msgs.rows) {
+            const icone = m.role === "user" ? "🧑" : "🤖";
+            const classe = m.role === "user" ? "user" : "assistant";
+            const date = new Date(m.created_at).toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
+            const contenu = (m.content || "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            bulles += `
+                <div class="msg ${classe}">
+                    <div class="avatar">${icone}</div>
+                    <div>
+                        <div class="bubble">${contenu}</div>
+                        <div class="time">${date}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        const html = `<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${titre} — HATIMEDIA</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg, #f0f2f7 0%, #e0e5ee 100%); min-height: 100dvh; padding: 20px; }
+  .chat { max-width: 800px; margin: 0 auto; }
+  .conv-header { text-align: center; margin-bottom: 30px; padding: 20px; background: rgba(255,255,255,.9); border-radius: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
+  .conv-header h2 { font-size: 22px; color: #111827; margin-bottom: 8px; }
+  .conv-header p { color: #6b7280; font-size: 13px; }
+  .btn-back { display: inline-block; margin-bottom: 16px; padding: 10px 20px; background: #2563eb; color: #fff; border-radius: 10px; text-decoration: none; font-size: 14px; font-weight: 600; }
+  .btn-back:hover { background: #1d4ed8; }
+  .msg { margin-bottom: 16px; display: flex; gap: 12px; align-items: flex-start; }
+  .msg.user { flex-direction: row-reverse; }
+  .msg .bubble { max-width: 75%; padding: 12px 16px; border-radius: 14px; line-height: 1.5; font-size: 14px; white-space: pre-wrap; word-wrap: break-word; }
+  .msg.user .bubble { background: linear-gradient(135deg, #4ade80, #22d3ee); color: #0a0e1a; border-top-right-radius: 4px; }
+  .msg.assistant .bubble { background: #fff; color: #1f2937; border-top-left-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,.06); }
+  .msg .avatar { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; background: #e5e7eb; }
+  .msg .time { font-size: 11px; color: #9ca3af; margin-top: 4px; }
+  .footer { text-align: center; color: #9ca3af; font-size: 12px; margin-top: 30px; }
+</style>
+</head>
+<body>
+<div class="chat">
+  <div class="conv-header">
+    <a href="https://hatimedia.onrender.com/chat" class="btn-back">← Discuter avec HATIMEDIA</a>
+    <h2>💬 ${titre}</h2>
+    <p>${msgs.rows.length} messages — Partagé depuis HATIMEDIA</p>
+  </div>
+  <div>${bulles}</div>
+  <p class="footer">HATIMEDIA — Conversation partagée</p>
+</div>
+</body>
+</html>`;
+
+        res.send(html);
+    } catch (error) {
+        console.error("❌ Erreur partage :", error);
+        res.status(500).send("Erreur serveur");
+    }
+});
+
+
+
+// ========================================
 // DÉMARRAGE DU SERVEUR
 // ========================================
 

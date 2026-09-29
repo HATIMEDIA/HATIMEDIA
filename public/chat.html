@@ -705,7 +705,30 @@ function ajouterMessage(texte, type, scroll, messageId) {
                 }, 1500);
             });
         };
+        
         reactionsDiv.appendChild(btnCopier);
+        
+        // Bouton Partager
+        var btnPartager = document.createElement("button");
+        btnPartager.className = "reaction-btn";
+        btnPartager.textContent = "🔗 Partager";
+        btnPartager.onclick = function () {
+            var lien = "https://hatimedia.onrender.com/share/" + sessionId;
+            navigator.clipboard.writeText(lien).then(function () {
+                btnPartager.textContent = "✅ Lien copié !";
+                setTimeout(function () {
+                    btnPartager.textContent = "🔗 Partager";
+                }, 1500);
+            }).catch(function (err) {
+                console.error("Erreur copie :", err);
+                btnPartager.textContent = "❌ Erreur";
+                setTimeout(function () {
+                    btnPartager.textContent = "🔗 Partager";
+                }, 1500);
+            });
+        };
+        reactionsDiv.appendChild(btnPartager);
+
 
 
         var emojis = ["👍", "❤️", "😂", "😍", "🎉", "🔥", "👏"];
