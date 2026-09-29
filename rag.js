@@ -27,10 +27,11 @@ async function rechercherDansBase(question, limite = 3) {
             [vecteurStr, limite]
         );
 
-        // 3. Filtrer par seuil de similarité (0.7 = 70%)
-        const resultats = result.rows.filter(r => Number(r.similarite) > 0.5);
+        // 3. Filtrer par seuil de similarité (0.15 = 15%)
+        const resultats = result.rows.filter(r => Number(r.similarite) > 0.15);
 
         console.log(`🔍 RAG : ${resultats.length} résultat(s) pertinent(s)`);
+        resultats.forEach(r => console.log(`   → ${r.source} (similarité ${r.similarite.toFixed(3)})`));
         return resultats;
     } catch (error) {
         console.error("❌ Erreur RAG :", error.message);
