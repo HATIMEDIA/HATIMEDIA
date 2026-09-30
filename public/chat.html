@@ -246,6 +246,7 @@
             gap: 6px;
             margin-top: 6px;
             margin-left: 4px;
+            flex-wrap: wrap;
         }
 
         .reaction-btn {
@@ -267,6 +268,29 @@
         .reaction-btn.actif {
             background: #2563eb;
             border-color: #2563eb;
+        }
+
+        .reaction-counts {
+            display: flex;
+            gap: 8px;
+            margin-top: 6px;
+            margin-left: 4px;
+            font-size: 12px;
+            color: #64748b;
+        }
+
+        .reaction-counts span {
+            background: rgba(0, 0, 0, 0.05);
+            padding: 2px 8px;
+            border-radius: 10px;
+        }
+
+        .reaction-who {
+            margin-top: 4px;
+            margin-left: 4px;
+            font-size: 11px;
+            color: #94a3b8;
+            line-height: 1.4;
         }
 
         .input-area {
@@ -316,7 +340,7 @@
         .send:hover { background: #1d4ed8; transform: scale(1.05); }
         .send:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
 
-                body.dark {
+        body.dark {
             background: linear-gradient(135deg, #0a0e1a 0%, #111827 100%);
         }
 
@@ -379,7 +403,6 @@
         body.dark .header-banner {
             background: #000;
         }
-
 
         footer {
             padding: 10px 16px 14px;
@@ -705,9 +728,8 @@ function ajouterMessage(texte, type, scroll, messageId) {
                 }, 1500);
             });
         };
-        
         reactionsDiv.appendChild(btnCopier);
-        
+
         // Bouton Partager
         var btnPartager = document.createElement("button");
         btnPartager.className = "reaction-btn";
@@ -729,8 +751,6 @@ function ajouterMessage(texte, type, scroll, messageId) {
         };
         reactionsDiv.appendChild(btnPartager);
 
-
-
         var emojis = ["👍", "❤️", "😂", "😍", "🎉", "🔥", "👏"];
         emojis.forEach(function (emoji) {
             var btn = document.createElement("button");
@@ -744,7 +764,6 @@ function ajouterMessage(texte, type, scroll, messageId) {
 
         wrapper.appendChild(reactionsDiv);
 
-        // Charger les compteurs
         chargerCompteurs(messageId, reactionsDiv);
     }
 
@@ -759,9 +778,11 @@ async function chargerCompteurs(messageId, reactionsDiv) {
         var data = await r.json();
 
         if (data.ok && data.reactions) {
-            // Supprimer l'ancien affichage s'il existe
             var existing = reactionsDiv.querySelector(".reaction-counts");
             if (existing) existing.remove();
+
+            var existingWho = reactionsDiv.querySelector(".reaction-who");
+            if (existingWho) existingWho.remove();
 
             var cles = Object.keys(data.reactions);
             if (cles.length === 0) return;
@@ -774,14 +795,25 @@ async function chargerCompteurs(messageId, reactionsDiv) {
                 counts.appendChild(span);
             });
             reactionsDiv.appendChild(counts);
+
+            if (data.details) {
+                var liste = document.createElement("div");
+                liste.className = "reaction-who";
+                cles.forEach(function (emoji) {
+                    var who = (data.details[emoji] || []).slice(0, 3).join(", ");
+                    var extra = (data.details[emoji] || []).length > 3 ? " +" + (data.details[emoji].length - 3) : "";
+                    var ligne = document.createElement("div");
+                    ligne.textContent = emoji + " par : " + who + extra;
+                    liste.appendChild(ligne);
+                });
+                reactionsDiv.appendChild(liste);
+            }
         }
     } catch (error) {
         console.error("Erreur chargement compteurs :", error);
     }
 }
 
-
-
 async function envoyerReaction(messageId, reaction, btn) {
     try {
         var r = await fetch("/api/react", {
@@ -813,42 +845,6 @@ async function envoyerReaction(messageId, reaction, btn) {
         console.error("Erreur envoi réaction :", error);
     }
 }
-
-
-async function envoyerReaction(messageId, reaction, btn) {
-    try {
-        var r = await fetch("/api/react", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-                messageId: messageId,
-                reaction: reaction,
-                sessionId: sessionId
-            })
-        });
-
-        var data = await r.json();
-
-        if (data.ok) {
-            var parent = btn.parentElement;
-            parent.querySelectorAll(".reaction-btn").forEach(function (b) {
-                b.classList.remove("actif");
-            });
-
-            if (data.action === "created" || data.action === "updated") {
-                btn.classList.add("actif");
-            }
-
-            var reactionsDiv = btn.parentElement;
-            chargerCompteurs(messageId, reactionsDiv);
-        }
-    } catch (error) {
-        console.error("Erreur envoi réaction :", error);
-    }
-}
-
-
-
 
 async function envoyerMessage() {
     var texte = input.value.trim();
@@ -940,11 +936,9 @@ input.addEventListener("keydown", function (e) {
     if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
 })();
 
-
 verifierHistorique();
 input.focus();
 </script>
 
 </body>
-</html>
 </html>
