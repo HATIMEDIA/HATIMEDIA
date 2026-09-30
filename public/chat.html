@@ -422,6 +422,7 @@
     <header class="header-banner">
         <img src="/fond-chat.jpg" alt="HATIMEDIA" class="header-image">
         <button class="reset" id="btnTheme" onclick="toggleTheme()" style="right: 120px;">🌙</button>
+        <button class="reset" id="btnPremium" onclick="passerPremium()" style="right: 220px; background: linear-gradient(135deg, #facc15, #fb923c); color: #0a0e1a; font-weight: bold;">💎 Premium</button>
         <button class="reset" onclick="nouvelleConversation()">Nouveau</button>
     </header>
 
@@ -479,6 +480,46 @@
 
 <script>
 var chat = document.getElementById("chat");
+
+// Premium
+async function passerPremium() {
+    try {
+        var r = await fetch("/api/stripe/checkout", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sessionId: sessionId })
+        });
+        var data = await r.json();
+
+        if (data.ok && data.url) {
+            window.location.href = data.url;
+        } else {
+            alert("❌ " + (data.error || "Erreur inconnue"));
+        }
+    } catch (error) {
+        console.error("Erreur premium :", error);
+        alert("❌ Connexion impossible. Réessayez.");
+    }
+}
+
+// Vérifier le statut Premium au chargement
+async function verifierPremium() {
+    try {
+        var r = await fetch("/api/stripe/status/" + sessionId);
+        var data = await r.json();
+        var btn = document.getElementById("btnPremium");
+        if (data.plan === "premium" && data.status === "active") {
+            if (btn) {
+                btn.textContent = "💎 Premium ✓";
+                btn.style.background = "linear-gradient(135deg, #4ade80, #22d3ee)";
+            }
+        }
+    } catch (e) {
+        console.error("Erreur statut premium :", e);
+    }
+}
+
+
 
 // Mode sombre
 function toggleTheme() {
@@ -938,6 +979,10 @@ input.addEventListener("keydown", function (e) {
 
 verifierHistorique();
 input.focus();
+
+verifierPremium();
+
+
 </script>
 
 </body>
