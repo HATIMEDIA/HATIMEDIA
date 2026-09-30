@@ -24,6 +24,13 @@ const { envoyerNotification } = require("./email");
 const { envoyerNotificationDiscord } = require("./discord");
 const { envoyerMessageWhatsApp } = require("./whatsapp");
 const { rechercherDansBase, getContexteRAG } = require("./rag");
+const {
+    stripe,
+    getAbonnement,
+    creerSessionCheckout,
+    activerPremium,
+    desactiverPremium
+} = require("./stripe");
 const app = express();
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
@@ -1084,19 +1091,24 @@ app.get("/api/reactions/:messageId", async (req, res) => {
         }
 
         const result = await pool.query(
-            `SELECT reaction_type, COUNT(*) AS nb
-             FROM reactions
+            `SELECT reaction_type, session_id FROM reactions
              WHERE message_id = $1
-             GROUP BY reaction_type`,
+             ORDER BY created_at ASC`,
             [messageId]
         );
 
         const comptes = {};
+        const par_emoji = {};
+
         for (const row of result.rows) {
-            comptes[row.reaction_type] = parseInt(row.nb);
+            const emoji = row.reaction_type;
+            const sess = (row.session_id || "").substring(0, 20);
+            comptes[emoji] = (comptes[emoji] || 0) + 1;
+            if (!par_emoji[emoji]) par_emoji[emoji] = [];
+            par_emoji[emoji].push(sess);
         }
 
-        res.json({ ok: true, messageId, reactions: comptes });
+        res.json({ ok: true, messageId, reactions: comptes, details: par_emoji });
 
     } catch (error) {
         console.error("❌ Erreur comptage réactions :", error);
@@ -1301,6 +1313,126 @@ app.get("/share/:sessionId", async (req, res) => {
         console.error("❌ Erreur partage :", error);
         res.status(500).send("Erreur serveur");
     }
+});
+
+
+// ========================================
+// STRIPE — PAIEMENT & ABONNEMENT
+// ========================================
+
+// Créer une session de paiement
+app.post("/api/stripe/checkout", async (req, res) => {
+    try {
+        const { sessionId } = req.body;
+        if (!sessionId) {
+            return res.status(400).json({ ok: false, error: "Session manquante." });
+        }
+
+        const userId = await getOrCreateAnonymousUser(sessionId);
+
+        const userInfo = await pool.query(
+            `SELECT email FROM users WHERE id = $1`,
+            [userId]
+        );
+        const email = userInfo.rows[0]?.email || "client@hatimedia.local";
+
+        const session = await creerSessionCheckout(
+            userId,
+            email,
+            "https://hatimedia.onrender.com/premium-success?session_id={CHECKOUT_SESSION_ID}",
+            "https://hatimedia.onrender.com/chat"
+        );
+
+        res.json({ ok: true, url: session.url });
+    } catch (error) {
+        console.error("❌ Erreur Stripe checkout :", error.message);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Vérifier mon abonnement
+app.get("/api/stripe/status/:sessionId", async (req, res) => {
+    try {
+        const sessionId = req.params.sessionId;
+        const userId = await getOrCreateAnonymousUser(sessionId);
+        const abo = await getAbonnement(userId);
+        res.json({ ok: true, ...abo });
+    } catch (error) {
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Webhook Stripe (paiement confirmé)
+app.post("/webhook-stripe", express.raw({ type: "application/json" }), async (req, res) => {
+    const sig = req.headers["stripe-signature"];
+    let event;
+
+    try {
+        // En mode test, on accepte sans vérification de signature
+        // En production, ajoutez STRIPE_WEBHOOK_SECRET
+        event = JSON.parse(req.body.toString());
+    } catch (error) {
+        console.error("❌ Erreur parsing webhook Stripe :", error.message);
+        return res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+
+    console.log("💳 Webhook Stripe reçu :", event.type);
+
+    try {
+        if (event.type === "checkout.session.completed") {
+            const session = event.data.object;
+            const userId = parseInt(session.metadata?.userId);
+            if (userId) {
+                await activerPremium(userId, session.customer, session.subscription);
+                console.log(`✅ Premium activé pour user ${userId}`);
+            }
+        } else if (
+            event.type === "customer.subscription.deleted" ||
+            event.type === "customer.subscription.updated"
+        ) {
+            const sub = event.data.object;
+            const userId = parseInt(sub.metadata?.userId);
+            if (userId && sub.status !== "active") {
+                await desactiverPremium(userId);
+            }
+        }
+    } catch (error) {
+        console.error("❌ Erreur traitement webhook :", error);
+    }
+
+    res.json({ received: true });
+});
+
+// Page de succès après paiement
+app.get("/premium-success", async (req, res) => {
+    const sessionId = req.query.session_id || "";
+    res.send(`<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bienvenue en Premium !</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: linear-gradient(135deg, #4ade80, #38bdf8); min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: #fff; padding: 40px; border-radius: 20px; text-align: center; max-width: 500px; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+  h1 { color: #10b981; font-size: 28px; margin-bottom: 15px; }
+  p { color: #64748b; font-size: 15px; line-height: 1.6; margin-bottom: 20px; }
+  .emoji { font-size: 60px; margin-bottom: 20px; }
+  a { display: inline-block; background: #10b981; color: #fff; padding: 14px 28px; border-radius: 12px; text-decoration: none; font-weight: 600; }
+  a:hover { background: #059669; }
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="emoji">🎉</div>
+    <h1>Bienvenue dans HATIMEDIA Premium !</h1>
+    <p>Votre abonnement est actif. Vous avez maintenant accès à :</p>
+    <p>✅ Messages illimités<br>✅ RAG (base de connaissances)<br>✅ CRM complet<br>✅ WhatsApp<br>✅ Multi-utilisateurs</p>
+    <a href="/chat">Retour au chat →</a>
+  </div>
+</body>
+</html>`);
 });
 
 
