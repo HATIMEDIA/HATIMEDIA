@@ -1363,22 +1363,14 @@ app.get("/api/stripe/status/:sessionId", async (req, res) => {
 });
 
 // Webhook Stripe (paiement confirmé)
-app.post("/webhook-stripe", express.raw({ type: "application/json" }), async (req, res) => {
-    const sig = req.headers["stripe-signature"];
-    let event;
-
+app.post("/webhook-stripe", async (req, res) => {
     try {
-        // En mode test, on accepte sans vérification de signature
-        // En production, ajoutez STRIPE_WEBHOOK_SECRET
-        event = JSON.parse(req.body.toString());
-    } catch (error) {
-        console.error("❌ Erreur parsing webhook Stripe :", error.message);
-        return res.status(400).send(`Webhook Error: ${error.message}`);
-    }
+        // Le raw body est capturé par express.json({verify: ...}) en haut du fichier
+        const rawBody = req.rawBody ? req.rawBody.toString() : JSON.stringify(req.body);
+        const event = JSON.parse(rawBody);
 
-    console.log("💳 Webhook Stripe reçu :", event.type);
+        console.log("💳 Webhook Stripe reçu :", event.type);
 
-    try {
         if (event.type === "checkout.session.completed") {
             const session = event.data.object;
             const userId = parseInt(session.metadata?.userId);
@@ -1396,13 +1388,13 @@ app.post("/webhook-stripe", express.raw({ type: "application/json" }), async (re
                 await desactiverPremium(userId);
             }
         }
+
+        res.json({ received: true });
     } catch (error) {
-        console.error("❌ Erreur traitement webhook :", error);
+        console.error("❌ Erreur webhook Stripe :", error.message);
+        res.status(400).json({ error: error.message });
     }
-
-    res.json({ received: true });
 });
-
 // Page de succès après paiement
 app.get("/premium-success", async (req, res) => {
     const sessionId = req.query.session_id || "";
