@@ -481,7 +481,6 @@
 <script>
 var chat = document.getElementById("chat");
 
-// Premium
 async function passerPremium() {
     try {
         var r = await fetch("/api/stripe/checkout", {
@@ -502,7 +501,6 @@ async function passerPremium() {
     }
 }
 
-// Vérifier le statut Premium au chargement
 async function verifierPremium() {
     try {
         var r = await fetch("/api/stripe/status/" + sessionId);
@@ -519,9 +517,6 @@ async function verifierPremium() {
     }
 }
 
-
-
-// Mode sombre
 function toggleTheme() {
     document.body.classList.toggle("dark");
     var isDark = document.body.classList.contains("dark");
@@ -529,7 +524,6 @@ function toggleTheme() {
     document.getElementById("btnTheme").textContent = isDark ? "☀️" : "🌙";
 }
 
-// Charger le thème sauvegardé
 (function chargerTheme() {
     var theme = localStorage.getItem("hatimedia_theme");
     if (theme === "dark") {
@@ -751,7 +745,6 @@ function ajouterMessage(texte, type, scroll, messageId) {
         reactionsDiv.className = "reactions";
         reactionsDiv.dataset.messageId = messageId;
 
-        // Bouton Copier
         var btnCopier = document.createElement("button");
         btnCopier.className = "reaction-btn";
         btnCopier.textContent = "📋 Copier";
@@ -771,7 +764,6 @@ function ajouterMessage(texte, type, scroll, messageId) {
         };
         reactionsDiv.appendChild(btnCopier);
 
-        // Bouton Partager
         var btnPartager = document.createElement("button");
         btnPartager.className = "reaction-btn";
         btnPartager.textContent = "🔗 Partager";
@@ -970,7 +962,6 @@ input.addEventListener("keydown", function (e) {
     }
 });
 
-// Mettre à jour l'icône du bouton thème
 (function majIconeTheme() {
     var theme = localStorage.getItem("hatimedia_theme");
     var btn = document.getElementById("btnTheme");
@@ -979,11 +970,8 @@ input.addEventListener("keydown", function (e) {
 
 verifierHistorique();
 input.focus();
-
 verifierPremium();
-
-
 </script>
-const { rechercherDansBase } = require("./rag");
+
 </body>
 </html>
