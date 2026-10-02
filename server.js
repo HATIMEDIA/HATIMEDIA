@@ -53,7 +53,14 @@ const pool = new Pool({ connectionString: NEON_URL, ssl: { rejectUnauthorized: f
 // Page de chat publique (sans login)
 app.get("/chat", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "chat.html"));
+
 });
+
+// Page admin
+app.get("/admin", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "admin.html"));
+});
+
 
 
 // ========================================

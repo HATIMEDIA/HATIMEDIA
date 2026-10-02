@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HATIMEDIA IA</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    background: #f5f7fb;
+    color: #1f2937;
+    min-height: 100vh;
+}
+
+/* ===============================
+   LOGIN
+   =============================== */
+#loginPanel {
+    position: fixed;
+    inset: 0;
+    background: #f5f7fb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+}
+#loginPanel > div {
+    width: 100%;
+    max-width: 420px;
+    margin: 20px;
+    background: white;
+    padding: 30px;
+    border-radius: 20px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+}
+#loginPanel input {
+    width: 100%;
+    padding: 14px;
+    margin: 8px 0;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    font-size: 16px;
+}
+#loginButton {
+    width: 100%;
+    padding: 14px;
+    margin-top: 10px;
+    border: 0;
+    border-radius: 12px;
+    background: #2563eb;
+    color: white;
+    font-size: 16px;
+    cursor: pointer;
+}
+
+/* ===============================
+   LAYOUT — Sidebar + Main
+   =============================== */
+.app {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    width: min(1200px, calc(100% - 32px));
+    height: 92vh;
+    margin: 4vh auto;
+    background: #ffffff;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 18px 55px rgba(20, 30, 60, .14);
+    border: 1px solid #e5e9f2;
+}
+
+/* ---------- SIDEBAR ---------- */
+.sidebar {
+    background: #0f172a;
+    color: #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    padding: 16px 12px;
+    gap: 10px;
+    border-right: 1px solid #1e293b;
+    overflow: hidden;
+    min-height: 0;
+}
+.new-conv {
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff;
+    border: 0;
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-weight: 650;
+    font-size: 14px;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+}
+.new-conv:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 22px rgba(37, 99, 235, .35);
+}
+.sidebar-title {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: #64748b;
+    margin-top: 10px;
+    padding-left: 4px;
+}
+.conversations-list {
+    flex: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-right: 4px;
+}
+.conversations-list::-webkit-scrollbar { width: 6px; }
+.conversations-list::-webkit-scrollbar-thumb {
+    background: #1e293b; border-radius: 4px;
+}
+.conv-empty {
+    font-size: 12px;
+    color: #64748b;
+    padding: 12px;
+    text-align: center;
+    font-style: italic;
+}
+.conv-item {
+    position: relative;
+    padding: 10px 30px 10px 12px;
+    border-radius: 10px;
+    cursor: pointer;
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.3;
+    overflow: hidden;
+    transition: background .15s, color .15s;
+}
+.conv-item:hover { background: rgba(255,255,255,.06); color: #fff; }
+.conv-item.active {
+    background: rgba(37, 99, 235, .35);
+    color: #fff;
+    box-shadow: inset 0 0 0 1px rgba(96, 165, 250, .35);
+}
+.conv-title {
+    display: block;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.conv-preview {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-top: 3px;
+}
+.conv-delete {
+    position: absolute;
+    right: 4px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: 0;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 6px;
+    padding: 4px 6px;
+    opacity: 0;
+    transition: opacity .15s, color .15s;
+}
+.conv-item:hover .conv-delete { opacity: 1; }
+.conv-delete:hover { color: #f87171; background: rgba(248, 113, 113, .12); }
+
+/* ---------- MAIN ---------- */
+.main {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    overflow: hidden;
+}
+.header {
+    padding: 22px 26px;
+    background: linear-gradient(135deg, #111827, #263a63);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+}
+.header h1 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 750;
+    letter-spacing: -.4px;
+}
+.header span {
+    display: block;
+    margin-top: 4px;
+    color: rgba(255,255,255,.72);
+    font-size: 13px;
+}
+.clear {
+    border: 1px solid rgba(255,255,255,.22);
+    background: rgba(255,255,255,.10);
+    color: #fff;
+    border-radius: 10px;
+    padding: 9px 14px;
+    cursor: pointer;
+}
+
+.chat {
+    flex: 1;
+    background: #f8f9fc;
+    padding: 25px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    min-height: 0;
+}
+.message {
+    max-width: 75%;
+    padding: 13px 17px;
+    border-radius: 18px;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+.user {
+    align-self: flex-end;
+    background: #2563eb;
+    color: white;
+    border-bottom-right-radius: 5px;
+}
+.assistant {
+    align-self: flex-start;
+    background: #eef2f7;
+    color: #1f2937;
+    border-bottom-left-radius: 5px;
+}
+
+/* ---------- WELCOME ---------- */
+.welcome {
+    position: relative;
+    text-align: center;
+    margin: auto;
+    padding: 42px 25px 36px;
+    border-radius: 28px;
+    background:
+        radial-gradient(circle at 15% 20%, rgba(255, 190, 100, 0.22), transparent 32%),
+        radial-gradient(circle at 85% 25%, rgba(160, 120, 255, 0.20), transparent 35%),
+        radial-gradient(circle at 50% 100%, rgba(80, 190, 255, 0.16), transparent 40%),
+        linear-gradient(135deg, rgba(255,255,255,0.97), rgba(248,245,255,0.97));
+    box-shadow: 0 20px 55px rgba(80, 60, 130, 0.12);
+    overflow: hidden;
+}
+.welcome-logo {
+    width: 68px;
+    height: 68px;
+    margin: 0 auto 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 20px;
+    background: #eef2ff;
+    font-size: 34px;
+    box-shadow: 0 8px 25px rgba(55, 70, 140, .10);
+}
+.photo-hatime {
+    display: block;
+    width: 160px;
+    height: 160px;
+    object-fit: cover;
+    border-radius: 22px;
+    margin: 0 auto 20px;
+    border: 3px solid rgba(255,255,255,.9);
+    box-shadow: 0 8px 24px rgba(0,0,0,.18);
+}
+.welcome h2 {
+    margin: 0 0 7px;
+    color: #111827;
+    font-size: 25px;
+    animation: hatimediaGlow 2.5s ease-in-out infinite;
+}
+@keyframes hatimediaGlow {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+}
+.welcome p { margin: 0 0 22px; color: #687386; }
+
+.hatimedia-v2-title {
+    text-align: center;
+    margin: 0 0 14px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #344054;
+    letter-spacing: .3px;
+}
+.action-grid {
+    width: min(820px, 100%);
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+.action-card {
+    position: relative;
+    overflow: hidden;
+    min-height: 125px;
+    padding: 18px 12px;
+    border: 1px solid rgba(255,255,255,0.75);
+    border-radius: 22px;
+    background: rgba(255,255,255,0.78);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 10px 28px rgba(60, 45, 100, 0.09);
+    cursor: pointer;
+    transition: transform .25s ease, box-shadow .25s ease, border-color .25s ease;
+    color: #172033;
+}
+.action-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 18px 38px rgba(80, 55, 140, 0.16);
+    border-color: rgba(124,58,237,0.18);
+}
+.action-icon {
+    display: block;
+    font-size: 27px;
+    margin-bottom: 9px;
+}
+.action-card strong {
+    display: block;
+    color: #18233a;
+    font-size: 13px;
+}
+.action-card small {
+    display: block;
+    margin-top: 5px;
+    color: #7a8495;
+    line-height: 1.35;
+}
+
+/* ---------- INPUT ---------- */
+.input-area {
+    padding: 16px;
+    background: #ffffff;
+    border-top: 1px solid #e7ebf2;
+    display: flex;
+    gap: 10px;
+    flex-shrink: 0;
+}
+#message {
+    flex: 1;
+    min-width: 0;
+    border: 1px solid #d9dfeb;
+    border-radius: 13px;
+    background: #f8f9fc;
+    color: #172033;
+    padding: 13px 15px;
+    outline: none;
+    font-size: 15px;
+}
+#message:focus {
+    border-color: #8797c5;
+    box-shadow: 0 0 0 3px rgba(90,110,170,.10);
+}
+.send {
+    border: 0;
+    border-radius: 13px;
+    padding: 0 22px;
+    background: #17233d;
+    color: #fff;
+    font-weight: 650;
+    cursor: pointer;
+    transition: transform .15s, background .15s;
+}
+.send:hover { background: #273a65; transform: translateY(-1px); }
+
+/* ---------- MODALE CRÉER ---------- */
+.hatimedia-create-box {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,.55);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 20px;
+}
+.hatimedia-create-panel {
+    width: min(560px, 100%);
+    padding: 24px;
+    border-radius: 20px;
+    background: rgba(25,25,45,.96);
+    color: white;
+    box-shadow: 0 20px 60px rgba(0,0,0,.4);
+}
+.hatimedia-create-panel h3 { margin: 0 0 6px; }
+.hatimedia-create-panel p { margin: 0 0 18px; opacity: .75; }
+.hatimedia-create-types {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 9px;
+    margin-bottom: 14px;
+}
+.hatimedia-create-types button {
+    border: 0;
+    border-radius: 12px;
+    padding: 11px;
+    cursor: pointer;
+    background: rgba(255,255,255,.1);
+    color: white;
+}
+#hatimediaCreatePrompt {
+    width: 100%;
+    min-height: 110px;
+    box-sizing: border-box;
+    resize: vertical;
+    border-radius: 12px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.08);
+    color: white;
+    padding: 12px;
+    font: inherit;
+}
+.hatimedia-create-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 14px;
+}
+.hatimedia-create-actions button {
+    border: 0;
+    border-radius: 12px;
+    padding: 11px 16px;
+    cursor: pointer;
+}
+.hatimedia-create-actions .annuler {
+    background: rgba(255,255,255,.1);
+    color: white;
+}
+.hatimedia-create-actions .generer {
+    background: white;
+    color: #111;
+    font-weight: 700;
+}
+
+/* ---------- RESPONSIVE (sidebar toujours visible) ---------- */
+@media (max-width: 700px) {
+    .app {
+        width: 100%;
+        height: 100vh;
+        margin: 0;
+        border-radius: 0;
+        grid-template-columns: 220px 1fr;
+    }
+    .message { max-width: 88%; }
+    .action-grid { grid-template-columns: repeat(2, 1fr); }
+    .photo-hatime { width: 130px; height: 130px; }
+    .header h1 { font-size: 18px; }
+}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div id="loginPanel">
+    <div>
+        <div style="text-align:center; font-size:50px;">🤖</div>
+        <h2 style="text-align:center; margin: 0 0 20px;">Connexion HATIMEDIA</h2>
+
+        <input id="loginEmail" type="email" placeholder="Votre email" autocomplete="email">
+        <input id="loginPassword" type="password" placeholder="Votre mot de passe" autocomplete="current-password">
+
+        <button id="loginButton" onclick="connexion()">Se connecter</button>
+
+        <div id="loginError" style="margin-top:12px; color:#dc2626; text-align:center; min-height:20px;"></div>
+    </div>
+</div>
+
+<!-- APP -->
+<div class="app">
+
+    <aside class="sidebar">
+        <button class="new-conv" onclick="nouvelleConversation()">➕ Nouvelle conversation</button>
+        <div class="sidebar-title">Historique</div>
+        <div id="conversationsList" class="conversations-list">
+            <div class="conv-empty">Aucune conversation.</div>
+        </div>
+    </aside>
+
+    <main class="main">
+
+        <div class="header">
+            <div>
+                <h1>🤖 HATIMEDIA IA</h1>
+                <span>Propulsé par OpenAI</span>
+            </div>
+            <button class="clear" onclick="nouvelleConversation()">Nouveau</button>
+        </div>
+
+        <div id="chat" class="chat">
+            <div id="welcome" class="welcome">
+                <div class="welcome-logo">🏰</div>
+                <img src="/fond-hatime.png" class="photo-hatime" alt="Hatime" onerror="this.style.display='none'">
+                <h2>Bienvenue sur HATIMEDIA IA 👋🏾</h2>
+                <p>Votre assistant IA personnel pour discuter, analyser, créer et travailler avec vos documents.</p>
+
+                <div class="hatimedia-v2-title">✨ Que voulez-vous faire ?</div>
+
+                <div class="action-grid">
+                    <button class="action-card" onclick="document.getElementById('message').focus()">
+                        <span class="action-icon">💬</span>
+                        <strong>DISCUTER</strong>
+                        <small>Parler normalement avec HATIMEDIA</small>
+                    </button>
+                    <button class="action-card" onclick="parler()">
+                        <span class="action-icon">🎙️</span>
+                        <strong>PARLER</strong>
+                        <small>Parler avec votre voix</small>
+                    </button>
+                    <button class="action-card" onclick="analyser()">
+                        <span class="action-icon">📄</span>
+                        <strong>ANALYSER</strong>
+                        <small>Analyser un document</small>
+                    </button>
+                    <button class="action-card" onclick="creer()">
+                        <span class="action-icon">💡</span>
+                        <strong>CRÉER</strong>
+                        <small>Créer des idées avec HATIMEDIA</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input id="message" type="text" placeholder="Écrivez votre message..." autocomplete="off">
+            <button class="send" onclick="envoyerMessage()">Envoyer</button>
+        </div>
+
+    </main>
+</div>
+
+<script>
+const input = document.getElementById("message");
+const chat = document.getElementById("chat");
+const conversationsList = document.getElementById("conversationsList");
+
+let conversation = [];
+let conversationCouranteId = null;
+
+/* ==========================================
+   ACCUEIL COMPLET (réutilisable)
+   ========================================== */
+function htmlAccueil(titre, sousTitre) {
+    return `
+        <div id="welcome" class="welcome">
+            <div class="welcome-logo">🏰</div>
+            <img src="/fond-hatime.png" class="photo-hatime" alt="Hatime" onerror="this.style.display='none'">
+            <h2>${titre}</h2>
+            <p>${sousTitre}</p>
+            <div class="hatimedia-v2-title">✨ Que voulez-vous faire ?</div>
+            <div class="action-grid">
+                <button class="action-card" onclick="document.getElementById('message').focus()">
+                    <span class="action-icon">💬</span>
+                    <strong>DISCUTER</strong>
+                    <small>Parler normalement avec HATIMEDIA</small>
+                </button>
+                <button class="action-card" onclick="parler()">
+                    <span class="action-icon">🎙️</span>
+                    <strong>PARLER</strong>
+                    <small>Parler avec votre voix</small>
+                </button>
+                <button class="action-card" onclick="analyser()">
+                    <span class="action-icon">📄</span>
+                    <strong>ANALYSER</strong>
+                    <small>Analyser un document</small>
+                </button>
+                <button class="action-card" onclick="creer()">
+                    <span class="action-icon">💡</span>
+                    <strong>CRÉER</strong>
+                    <small>Créer des idées avec HATIMEDIA</small>
+                </button>
+            </div>
+        </div>`;
+}
+
+function afficherAccueil() {
+    chat.innerHTML = htmlAccueil(
+        "Bienvenue sur HATIMEDIA IA 👋🏾",
+        "Votre assistant IA personnel pour discuter, analyser, créer et travailler avec vos documents."
+    );
+}
+
+/* ==========================================
+   UTILITAIRE
+   ========================================== */
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+}
+
+/* ==========================================
+   CONNEXION
+   ========================================== */
+async function connexion() {
+    const email    = document.getElementById("loginEmail").value.trim();
+    const password = document.getElementById("loginPassword").value;
+    const erreur   = document.getElementById("loginError");
+    const bouton   = document.getElementById("loginButton");
+
+    erreur.textContent = "";
+
+    if (!email || !password) {
+        erreur.textContent = "Veuillez saisir votre email et votre mot de passe.";
+        return;
+    }
+
+    bouton.disabled = true;
+    bouton.textContent = "Connexion...";
+
+    try {
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password })
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || !data.token) {
+            throw new Error(data.error || "Connexion impossible");
+        }
+
+        localStorage.setItem("hatimedia_token", data.token);
+        document.getElementById("loginPanel").style.display = "none";
+
+        // ✅ On affiche l'accueil + on remplit la sidebar (sans ouvrir de conv)
+        conversationCouranteId = null;
+        conversation = [];
+        afficherAccueil();
+        await chargerHistorique();
+
+        input.focus();
+    } catch (error) {
+        console.error(error);
+        erreur.textContent = error.message || "Erreur de connexion.";
+    } finally {
+        bouton.disabled = false;
+        bouton.textContent = "Se connecter";
+    }
+}
+
+/* ==========================================
+   HISTORIQUE
+   ========================================== */
+async function chargerHistorique() {
+    const token = localStorage.getItem("hatimedia_token");
+    if (!token) return;
+
+    try {
+        const response = await fetch("/api/conversations", {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await response.json();
+
+        if (!response.ok || !data.ok) return;
+
+        afficherConversations(data.conversations);
+    } catch (error) {
+        console.error("ERREUR HISTORIQUE :", error);
+    }
+}
+
+function afficherConversations(conversations) {
+    conversationsList.innerHTML = "";
+
+    if (!conversations || conversations.length === 0) {
+        conversationsList.innerHTML = `<div class="conv-empty">Aucune conversation.</div>`;
+        return;
+    }
+
+    for (const conv of conversations) {
+        const item = document.createElement("div");
+        item.className = "conv-item";
+        item.dataset.convId = conv.id;
+        if (String(conv.id) === String(conversationCouranteId)) {
+            item.classList.add("active");
+        }
+
+        const titre = conv.title || "Sans titre";
+        const apercu = conv.last_message
+            ? conv.last_message.replace(/\s+/g, " ").slice(0, 60)
+            : "Conversation vide";
+
+        item.innerHTML = `
+            <span class="conv-title">${escapeHtml(titre)}</span>
+            <span class="conv-preview">${escapeHtml(apercu)}</span>
+            <button class="conv-delete" title="Supprimer">🗑️</button>
+        `;
+
+        item.addEventListener("click", (e) => {
+            if (e.target.classList.contains("conv-delete")) return;
+            ouvrirConversation(conv.id);
+        });
+
+        item.querySelector(".conv-delete").addEventListener("click", async (e) => {
+            e.stopPropagation();
+            await supprimerConversation(conv.id);
+        });
+
+        conversationsList.appendChild(item);
+    }
+}
+
+/* ==========================================
+   OUVRIR UNE CONVERSATION
+   ========================================== */
+async function ouvrirConversation(conversationId) {
+    const token = localStorage.getItem("hatimedia_token");
+    if (!token) return;
+
+    try {
+        const response = await fetch(`/api/conversations/${conversationId}/messages`, {
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error("Erreur de chargement");
+
+        conversationCouranteId = conversationId;
+        conversation = data.messages.map(m => ({ role: m.role, content: m.content }));
+
+        chat.innerHTML = "";
+
+        if (data.messages.length === 0) {
+            afficherAccueil();
+        } else {
+            for (const m of data.messages) {
+                ajouterMessage(m.content, m.role === "user" ? "user" : "assistant", false);
+            }
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        document.querySelectorAll(".conv-item").forEach(el => {
+            if (String(el.dataset.convId) === String(conversationId)) {
+                el.classList.add("active");
+            } else {
+                el.classList.remove("active");
+            }
+        });
+
+        input.focus();
+    } catch (error) {
+        console.error(error);
+        ajouterMessage("❌ Impossible de charger cette conversation.", "assistant");
+    }
+}
+
+/* ==========================================
+   NOUVELLE CONVERSATION
+   ========================================== */
+async function nouvelleConversation() {
+    const token = localStorage.getItem("hatimedia_token");
+    if (!token) return;
+
+    try {
+        const response = await fetch("/api/conversations", {
+            method: "POST",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error("Erreur de création");
+
+        conversationCouranteId = data.conversation.id;
+        conversation = [];
+
+        // ✅ Accueil complet (image + cartes)
+        afficherAccueil();
+
+        await chargerHistorique();
+        input.focus();
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+/* ==========================================
+   SUPPRIMER UNE CONVERSATION
+   ========================================== */
+async function supprimerConversation(conversationId) {
+    if (!confirm("Supprimer cette conversation ?")) return;
+
+    const token = localStorage.getItem("hatimedia_token");
+    try {
+        const response = await fetch(`/api/conversations/${conversationId}`, {
+            method: "DELETE",
+            headers: { "Authorization": "Bearer " + token }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.ok) throw new Error("Erreur suppression");
+
+        if (String(conversationId) === String(conversationCouranteId)) {
+            conversationCouranteId = null;
+            conversation = [];
+            afficherAccueil();
+        }
+        await chargerHistorique();
+    } catch (error) {
+        console.error(error);
+        alert("Suppression impossible.");
+    }
+}
+
+/* ==========================================
+   AJOUTER UN MESSAGE
+   ========================================== */
+function ajouterMessage(texte, type, scroll = true) {
+    const welcome = document.getElementById("welcome");
+    if (welcome) welcome.remove();
+
+    const message = document.createElement("div");
+    message.className = "message " + type;
+    message.textContent = texte;
+    chat.appendChild(message);
+
+    if (scroll) chat.scrollTop = chat.scrollHeight;
+    return message;
+}
+
+/* ==========================================
+   ENVOYER UN MESSAGE
+   ========================================== */
+async function envoyerMessage() {
+    const message = input.value.trim();
+    if (!message) return;
+
+    ajouterMessage(message, "user");
+    conversation.push({ role: "user", content: message });
+    input.value = "";
+
+    const thinking = ajouterMessage("⏳ L'IA réfléchit...", "assistant");
+
+    try {
+        const token = localStorage.getItem("hatimedia_token");
+        const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                message: message,
+                conversationId: conversationCouranteId
+            })
+        });
+
+        const data = await response.json();
+        thinking.remove();
+
+        if (data.reply) {
+            ajouterMessage(data.reply, "assistant");
+            conversation.push({ role: "assistant", content: data.reply });
+
+            // 🔊 Voix Thomas
+            if ("speechSynthesis" in window && typeof data.reply === "string") {
+                const voix = new SpeechSynthesisUtterance(data.reply);
+                const voixThomas = window.speechSynthesis.getVoices().find(v => v.name === "Thomas");
+                if (voixThomas) voix.voice = voixThomas;
+                voix.lang = "fr-FR";
+                voix.volume = 1;
+                voix.rate = 1;
+                voix.pitch = 1;
+                window.speechSynthesis.speak(voix);
+            }
+
+            if (data.conversationId) {
+                conversationCouranteId = data.conversationId;
+            }
+            await chargerHistorique();
+        } else {
+            ajouterMessage("Une erreur est survenue.", "assistant");
+        }
+    } catch (error) {
+        console.error(error);
+        thinking.remove();
+        ajouterMessage("Impossible de contacter le serveur.", "assistant");
+    }
+
+    input.focus();
+}
+
+/* ==========================================
+   ENTRÉE CLAVIER
+   ========================================== */
+input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        envoyerMessage();
+    }
+});
+
+/* ==========================================
+   AU DÉMARRAGE
+   ========================================== */
+window.addEventListener("load", async () => {
+    const token = localStorage.getItem("hatimedia_token");
+    if (!token) return;
+
+    document.getElementById("loginPanel").style.display = "none";
+    afficherAccueil();
+    await chargerHistorique();
+});
+</script>
+
+<script>
+function parler() {
+    if (!("webkitSpeechRecognition" in window) && !("SpeechRecognition" in window)) {
+        alert("La reconnaissance vocale n'est pas disponible dans ce navigateur.");
+        return;
+    }
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "fr-FR";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = function (event) {
+        input.value = event.results[0][0].transcript;
+        envoyerMessage();
+    };
+    recognition.onerror = function (event) {
+        alert("Impossible d'utiliser le microphone : " + event.error);
+    };
+    recognition.start();
+}
+
+function analyser() {
+    const choixFichier = document.createElement("input");
+    choixFichier.type = "file";
+    choixFichier.accept = ".pdf,.docx,.txt";
+
+    choixFichier.onchange = async function () {
+        if (!choixFichier.files.length) return;
+        const fichier = choixFichier.files[0];
+        const formulaire = new FormData();
+        formulaire.append("document", fichier);
+
+        try {
+            const response = await fetch("/api/analyser-document", {
+                method: "POST",
+                headers: {
+                    "Authorization": "Bearer " + localStorage.getItem("hatimedia_token")
+                },
+                body: formulaire
+            });
+            const data = await response.json();
+            if (!response.ok || !data.ok) throw new Error(data.error || "Erreur");
+
+            ajouterMessage(
+                "📄 Document analysé ✅\n\nFichier : " + data.filename + "\n\n" + (data.text || ""),
+                "assistant"
+            );
+        } catch (error) {
+            ajouterMessage("❌ Impossible d'envoyer le document.", "assistant");
+        }
+    };
+    choixFichier.click();
+}
+
+function creer() {
+    if (document.querySelector(".hatimedia-create-box")) return;
+    const box = document.createElement("div");
+    box.className = "hatimedia-create-box";
+    box.innerHTML = `
+        <div class="hatimedia-create-panel">
+            <h3>💡 Créer avec HATIMEDIA</h3>
+            <p>Choisissez un type puis décrivez ce que vous voulez créer.</p>
+            <div class="hatimedia-create-types">
+                <button onclick="choisirCreation('un texte')">✍🏾 Texte</button>
+                <button onclick="choisirCreation('une idée')">💡 Idée</button>
+                <button onclick="choisirCreation('une publication')">📱 Publication</button>
+                <button onclick="choisirCreation('un email')">📧 Email</button>
+            </div>
+            <textarea id="hatimediaCreatePrompt" placeholder="Exemple : présente HATIMEDIA en quelques lignes..."></textarea>
+            <div class="hatimedia-create-actions">
+                <button class="annuler" onclick="fermerCreation()">Annuler</button>
+                <button class="generer" onclick="genererCreation()">✨ Générer</button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(box);
+    document.getElementById("hatimediaCreatePrompt").focus();
+}
+
+function choisirCreation(type) {
+    const zone = document.getElementById("hatimediaCreatePrompt");
+    if (zone) { zone.value = "Crée " + type + " : "; zone.focus(); }
+}
+function fermerCreation() {
+    const box = document.querySelector(".hatimedia-create-box");
+    if (box) box.remove();
+}
+
+async function genererCreation() {
+    const zone = document.getElementById("hatimediaCreatePrompt");
+    const prompt = zone ? zone.value.trim() : "";
+    if (!prompt) { alert("Écrivez d'abord ce que vous voulez créer."); return; }
+
+    const token = localStorage.getItem("hatimedia_token");
+    if (!token) { alert("Session expirée."); return; }
+
+    const bouton = document.querySelector(".hatimedia-create-actions .generer");
+    if (bouton) { bouton.disabled = true; bouton.textContent = "⏳ Génération..."; }
+
+    try {
+        const response = await fetch("/api/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + token
+            },
+            body: JSON.stringify({
+                message: prompt,
+                conversationId: conversationCouranteId
+            })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Erreur");
+
+        fermerCreation();
+        ajouterMessage("💡 Création HATIMEDIA\n\n" + (data.reply || "Terminé."), "assistant");
+
+        if (data.conversationId) conversationCouranteId = data.conversationId;
+        await chargerHistorique();
+    } catch (error) {
+        alert("Impossible de générer : " + error.message);
+        if (bouton) { bouton.disabled = false; bouton.textContent = "✨ Générer"; }
+    }
+}
+</script>
+
+</body>
+</html>
