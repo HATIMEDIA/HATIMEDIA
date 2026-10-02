@@ -41,20 +41,37 @@
             object-fit: contain;
         }
 
-        .header-banner .reset {
-            position: absolute;
-            bottom: 12px;
-            right: 12px;
-            z-index: 5;
-            border: 1px solid rgba(255,255,255,.35);
-            background: rgba(0,0,0,.55);
-            backdrop-filter: blur(6px);
-            -webkit-backdrop-filter: blur(6px);
-            color: #fff;
+        .header-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 10px 16px;
+            background: rgba(255, 255, 255, 0.95);
+            border-bottom: 1px solid #e7ebf2;
+            flex-shrink: 0;
+        }
+
+        .btn-header {
+            padding: 8px 16px;
             border-radius: 10px;
-            padding: 8px 14px;
             font-size: 13px;
+            font-weight: 600;
             cursor: pointer;
+            border: 1px solid #e2e7f0;
+            background: #fff;
+            color: #172033;
+            transition: transform 0.15s, box-shadow 0.15s;
+        }
+
+        .btn-header:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+
+        #btnPremium {
+            background: linear-gradient(135deg, #facc15, #fb923c);
+            color: #0a0e1a;
+            border-color: transparent;
         }
 
         .reprendre-banner {
@@ -404,6 +421,22 @@
             background: #000;
         }
 
+        body.dark .header-buttons {
+            background: rgba(17, 24, 39, 0.95);
+            border-bottom-color: #1f2937;
+        }
+
+        body.dark .btn-header {
+            background: #1e293b;
+            border-color: #334155;
+            color: #e0e6ed;
+        }
+
+        body.dark #btnPremium {
+            background: linear-gradient(135deg, #facc15, #fb923c);
+            color: #0a0e1a;
+        }
+
         footer {
             padding: 10px 16px 14px;
             text-align: center;
@@ -421,10 +454,13 @@
 <div class="app">
     <header class="header-banner">
         <img src="/fond-chat.jpg" alt="HATIMEDIA" class="header-image">
-        <button class="reset" id="btnTheme" onclick="toggleTheme()" style="right: 120px;">🌙</button>
-        <button class="reset" id="btnPremium" onclick="passerPremium()" style="right: 12px; bottom: 60px; background: linear-gradient(135deg, #facc15, #fb923c); color: #0a0e1a; font-weight: bold;">💎 Premium</button>
-        <button class="reset" onclick="nouvelleConversation()">Nouveau</button>
     </header>
+
+    <div class="header-buttons">
+        <button class="btn-header" id="btnPremium" onclick="passerPremium()">💎 Premium</button>
+        <button class="btn-header" id="btnTheme" onclick="toggleTheme()">🌙</button>
+        <button class="btn-header" onclick="nouvelleConversation()">Nouveau</button>
+    </div>
 
     <div id="reprendreBanner" class="reprendre-banner">
         💬 Vous avez une conversation en cours.
