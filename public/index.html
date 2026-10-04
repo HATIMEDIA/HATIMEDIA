@@ -190,5 +190,175 @@
   <p style="margin-top:10px;">Fait avec 💚 par Hatime Hamadi</p>
 </footer>
 
+<!-- WIDGET CHAT FLOTTANT -->
+<div id="chatWidgetBtn" onclick="toggleChatWidget()">
+  <span>💬</span>
+</div>
+
+<div id="chatWidgetWindow">
+  <div class="widget-header">
+    <div>
+      <strong>🤖 HATIMEDIA</strong>
+      <small>En ligne · Répond en 5 sec</small>
+    </div>
+    <button onclick="toggleChatWidget()">✕</button>
+  </div>
+  <iframe src="/chat" id="chatWidgetFrame" loading="lazy"></iframe>
+  <div class="widget-footer">
+    <a href="/chat" target="_blank">Ouvrir en plein écran →</a>
+  </div>
+</div>
+
+<style>
+  #chatWidgetBtn {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 65px;
+    height: 65px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4ade80, #38bdf8);
+    box-shadow: 0 10px 30px rgba(74, 222, 128, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 32px;
+    z-index: 9998;
+    transition: transform 0.25s, box-shadow 0.25s;
+    animation: widgetPulse 2s infinite;
+  }
+  #chatWidgetBtn:hover {
+    transform: scale(1.1);
+    box-shadow: 0 15px 40px rgba(74, 222, 128, 0.6);
+  }
+  #chatWidgetBtn.hidden {
+    opacity: 0;
+    pointer-events: none;
+    transform: scale(0.5);
+  }
+  @keyframes widgetPulse {
+    0%, 100% { box-shadow: 0 10px 30px rgba(74, 222, 128, 0.45); }
+    50% { box-shadow: 0 10px 40px rgba(74, 222, 128, 0.75); }
+  }
+
+  #chatWidgetWindow {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    width: 400px;
+    height: 620px;
+    max-height: calc(100vh - 50px);
+    max-width: calc(100vw - 50px);
+    background: #fff;
+    border-radius: 20px;
+    box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
+    z-index: 9999;
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    animation: widgetSlideIn 0.3s ease;
+  }
+  #chatWidgetWindow.open {
+    display: flex;
+  }
+  @keyframes widgetSlideIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .widget-header {
+    background: linear-gradient(135deg, #0f172a, #1e293b);
+    color: #fff;
+    padding: 14px 18px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .widget-header strong {
+    display: block;
+    font-size: 15px;
+    color: #4ade80;
+  }
+  .widget-header small {
+    display: block;
+    font-size: 11px;
+    color: #94a3b8;
+    margin-top: 2px;
+  }
+  .widget-header button {
+    background: rgba(255,255,255,0.1);
+    border: 0;
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  .widget-header button:hover {
+    background: rgba(255,255,255,0.2);
+  }
+
+  #chatWidgetFrame {
+    flex: 1;
+    border: 0;
+    width: 100%;
+    background: #f8f9fc;
+  }
+
+  .widget-footer {
+    padding: 8px;
+    text-align: center;
+    background: #f8f9fc;
+    border-top: 1px solid #e7ebf2;
+    flex-shrink: 0;
+  }
+  .widget-footer a {
+    color: #2563eb;
+    font-size: 12px;
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .widget-footer a:hover {
+    text-decoration: underline;
+  }
+
+  @media (max-width: 500px) {
+    #chatWidgetWindow {
+      width: 100vw;
+      height: 100vh;
+      max-height: 100vh;
+      max-width: 100vw;
+      bottom: 0;
+      right: 0;
+      border-radius: 0;
+    }
+    #chatWidgetBtn {
+      width: 55px;
+      height: 55px;
+      font-size: 26px;
+      bottom: 15px;
+      right: 15px;
+    }
+  }
+</style>
+
+<script>
+function toggleChatWidget() {
+  var win = document.getElementById("chatWidgetWindow");
+  var btn = document.getElementById("chatWidgetBtn");
+
+  win.classList.toggle("open");
+
+  if (win.classList.contains("open")) {
+    btn.classList.add("hidden");
+  } else {
+    btn.classList.remove("hidden");
+  }
+}
+</script>
+
 </body>
 </html>
