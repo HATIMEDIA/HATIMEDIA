@@ -1,0 +1,200 @@
+(function() {
+    'use strict';
+
+    // ⚠️ URL de HATIMEDIA (à changer si vous avez un domaine personnalisé)
+    var HATIMEDIA_URL = 'https://hatimedia.onrender.com';
+
+    // Ne pas charger deux fois
+    if (window.__hatimediaWidgetLoaded) return;
+    window.__hatimediaWidgetLoaded = true;
+
+    // Attendre que le DOM soit chargé
+    function init() {
+        // Créer le bouton flottant
+        var btn = document.createElement('div');
+        btn.id = 'hatimedia-widget-btn';
+        btn.innerHTML = '<span>💬</span>';
+        btn.onclick = toggleChat;
+
+        // Créer la fenêtre de chat
+        var win = document.createElement('div');
+        win.id = 'hatimedia-widget-window';
+        win.innerHTML = `
+            <div class="hatimedia-widget-header">
+                <div>
+                    <strong>🤖 HATIMEDIA</strong>
+                    <small>En ligne · Répond en 5 sec</small>
+                </div>
+                <button onclick="__hatimediaToggle()">✕</button>
+            </div>
+            <iframe src="${HATIMEDIA_URL}/chat" class="hatimedia-widget-frame" loading="lazy"></iframe>
+            <div class="hatimedia-widget-footer">
+                <a href="${HATIMEDIA_URL}/chat" target="_blank" rel="noopener">Ouvrir en plein écran →</a>
+            </div>
+        `;
+
+        // Ajouter le CSS
+        var style = document.createElement('style');
+        style.textContent = `
+            #hatimedia-widget-btn {
+                position: fixed;
+                bottom: 25px;
+                right: 25px;
+                width: 65px;
+                height: 65px;
+                border-radius: 50%;
+                background: linear-gradient(135deg, #4ade80, #38bdf8);
+                box-shadow: 0 10px 30px rgba(74, 222, 128, 0.45);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                cursor: pointer;
+                font-size: 32px;
+                z-index: 999998;
+                transition: transform 0.25s, box-shadow 0.25s;
+                animation: hatimediaPulse 2s infinite;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            }
+            #hatimedia-widget-btn:hover {
+                transform: scale(1.1);
+                box-shadow: 0 15px 40px rgba(74, 222, 128, 0.6);
+            }
+            #hatimedia-widget-btn.hatimedia-hidden {
+                opacity: 0;
+                pointer-events: none;
+                transform: scale(0.5);
+            }
+            @keyframes hatimediaPulse {
+                0%, 100% { box-shadow: 0 10px 30px rgba(74, 222, 128, 0.45); }
+                50% { box-shadow: 0 10px 40px rgba(74, 222, 128, 0.75); }
+            }
+
+            #hatimedia-widget-window {
+                position: fixed;
+                bottom: 25px;
+                right: 25px;
+                width: 400px;
+                height: 620px;
+                max-height: calc(100vh - 50px);
+                max-width: calc(100vw - 50px);
+                background: #fff;
+                border-radius: 20px;
+                box-shadow: 0 25px 70px rgba(0, 0, 0, 0.35);
+                z-index: 999999;
+                display: none;
+                flex-direction: column;
+                overflow: hidden;
+                font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            }
+            #hatimedia-widget-window.hatimedia-open {
+                display: flex;
+            }
+
+            .hatimedia-widget-header {
+                background: linear-gradient(135deg, #0f172a, #1e293b);
+                color: #fff;
+                padding: 14px 18px;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                flex-shrink: 0;
+            }
+            .hatimedia-widget-header strong {
+                display: block;
+                font-size: 15px;
+                color: #4ade80;
+            }
+            .hatimedia-widget-header small {
+                display: block;
+                font-size: 11px;
+                color: #94a3b8;
+                margin-top: 2px;
+            }
+            .hatimedia-widget-header button {
+                background: rgba(255,255,255,0.1);
+                border: 0;
+                color: #fff;
+                width: 32px;
+                height: 32px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+            }
+            .hatimedia-widget-header button:hover {
+                background: rgba(255,255,255,0.2);
+            }
+
+            .hatimedia-widget-frame {
+                flex: 1;
+                border: 0;
+                width: 100%;
+                background: #f8f9fc;
+            }
+
+            .hatimedia-widget-footer {
+                padding: 8px;
+                text-align: center;
+                background: #f8f9fc;
+                border-top: 1px solid #e7ebf2;
+                flex-shrink: 0;
+            }
+            .hatimedia-widget-footer a {
+                color: #2563eb;
+                font-size: 12px;
+                text-decoration: none;
+                font-weight: 600;
+            }
+            .hatimedia-widget-footer a:hover {
+                text-decoration: underline;
+            }
+
+            @media (max-width: 500px) {
+                #hatimedia-widget-window {
+                    width: 100vw;
+                    height: 100vh;
+                    max-height: 100vh;
+                    max-width: 100vw;
+                    bottom: 0;
+                    right: 0;
+                    border-radius: 0;
+                }
+                #hatimedia-widget-btn {
+                    width: 55px;
+                    height: 55px;
+                    font-size: 26px;
+                    bottom: 15px;
+                    right: 15px;
+                }
+            }
+        `;
+
+        document.head.appendChild(style);
+        document.body.appendChild(btn);
+        document.body.appendChild(win);
+    }
+
+    // Fonction globale pour toggler
+    window.__hatimediaToggle = function() {
+        var win = document.getElementById('hatimedia-widget-window');
+        var btn = document.getElementById('hatimedia-widget-btn');
+        if (!win || !btn) return;
+
+        win.classList.toggle('hatimedia-open');
+        if (win.classList.contains('hatimedia-open')) {
+            btn.classList.add('hatimedia-hidden');
+        } else {
+            btn.classList.remove('hatimedia-hidden');
+        }
+    };
+
+    function toggleChat() {
+        window.__hatimediaToggle();
+    }
+
+    // Charger quand le DOM est prêt
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
