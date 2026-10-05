@@ -22,6 +22,7 @@ const { executerAction } = require("./moteur-actions");
 const { analyserDemandeMessagerie, extraireContenuMessage } = require("./analyse-demande");
 const { envoyerNotification } = require("./email");
 const { envoyerNotificationDiscord } = require("./discord");
+const { envoyerNotificationSlack } = require("./slack");
 const { envoyerMessageWhatsApp } = require("./whatsapp");
 const { rechercherDansBase, getContexteRAG } = require("./rag");
 const {
@@ -990,6 +991,13 @@ app.post("/api/chat-public", async (req, res) => {
              RETURNING id`,
             [conversationId, "assistant", reply]
         );
+
+
+                // Notification Slack
+        envoyerNotificationSlack(message, reply, sessionId).catch(err =>
+            console.error("Erreur Slack :", err)
+        );
+
 
 
         // Notification Discord
