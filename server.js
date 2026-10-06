@@ -1692,11 +1692,12 @@ app.post("/api/chat-client", async (req, res) => {
         let contexteRAG = "";
         try {
             const ragResult = await pool.query(
-                `SELECT content FROM knowledge_base
-                 WHERE client_id = $1 OR client_id IS NULL
-                 LIMIT 5`,
-                [clientId]
-            );
+           `SELECT content FROM knowledge_base
+            WHERE client_id = $1
+            LIMIT 5`,
+            [clientId]
+        );
+
             if (ragResult.rows.length > 0) {
                 contexteRAG = "\n\n📚 Base de connaissances :\n" +
                     ragResult.rows.map(r => r.content).join("\n\n");
