@@ -1502,6 +1502,120 @@ app.post("/api/contact", async (req, res) => {
 });
 
 
+// ========================================
+// ADMIN CLIENTS (multi-tenant)
+// ========================================
+
+// Créer un client
+app.post("/api/admin/clients", async (req, res) => {
+    try {
+        const { slug, name, email, logo_url, primary_color, secondary_color, welcome_message, system_prompt } = req.body;
+
+        if (!slug || !name) {
+            return res.status(400).json({ ok: false, error: "Slug et name obligatoires." });
+        }
+
+        // Nettoyer le slug
+        const slugPropre = slug.toLowerCase().replace(/[^a-z0-9-]/g, "-");
+
+        const result = await pool.query(
+            `INSERT INTO clients (slug, name, email, logo_url, primary_color, secondary_color, welcome_message, system_prompt)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             RETURNING *`,
+            [slugPropre, name, email, logo_url, primary_color, secondary_color, welcome_message, system_prompt]
+        );
+
+        res.json({ ok: true, client: result.rows[0] });
+    } catch (error) {
+        console.error("Erreur création client :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Lister tous les clients
+app.get("/api/admin/clients", async (req, res) => {
+    try {
+        const result = await pool.query(
+            `SELECT id, slug, name, email, plan, status, created_at FROM clients ORDER BY created_at DESC`
+        );
+        res.json({ ok: true, clients: result.rows });
+    } catch (error) {
+        console.error("Erreur liste clients :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Modifier un client
+app.put("/api/admin/clients/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name, email, logo_url, primary_color, secondary_color, welcome_message, system_prompt, plan, status } = req.body;
+
+        const result = await pool.query(
+            `UPDATE clients SET
+                name = COALESCE($1, name),
+                email = COALESCE($2, email),
+                logo_url = COALESCE($3, logo_url),
+                primary_color = COALESCE($4, primary_color),
+                secondary_color = COALESCE($5, secondary_color),
+                welcome_message = COALESCE($6, welcome_message),
+                system_prompt = COALESCE($7, system_prompt),
+                plan = COALESCE($8, plan),
+                status = COALESCE($9, status),
+                updated_at = NOW()
+             WHERE id = $10
+             RETURNING *`,
+            [name, email, logo_url, primary_color, secondary_color, welcome_message, system_prompt, plan, status, id]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+
+        res.json({ ok: true, client: result.rows[0] });
+    } catch (error) {
+        console.error("Erreur modification client :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Supprimer un client
+app.delete("/api/admin/clients/:id", async (req, res) => {
+    try {
+        const { id } = req.params;
+        const result = await pool.query(`DELETE FROM clients WHERE id = $1 RETURNING id`, [id]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+
+        res.json({ ok: true });
+    } catch (error) {
+        console.error("Erreur suppression client :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Récupérer un client par slug (PUBLIC - pour la page chat)
+app.get("/api/client/:slug", async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const result = await pool.query(
+            `SELECT id, slug, name, logo_url, primary_color, secondary_color, welcome_message, plan, status
+             FROM clients WHERE slug = $1 AND status = 'active'`,
+            [slug]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+
+        res.json({ ok: true, client: result.rows[0] });
+    } catch (error) {
+        console.error("Erreur récupération client :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
 
 
 // ========================================
