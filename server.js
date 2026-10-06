@@ -871,7 +871,7 @@ app.post("/webhook", messenger.creerReceptionWebhook(cerveauHatimedia));
 // CHAT PUBLIC (sans login)
 // ========================================
 
-async function getOrCreateAnonymousUser(sessionId) {
+async function getOrCreateAnonymousUser(sessionId, clientId) {
     if (!sessionId || typeof sessionId !== "string") {
         throw new Error("sessionId invalide");
     }
@@ -885,8 +885,8 @@ async function getOrCreateAnonymousUser(sessionId) {
     if (exist.rows.length > 0) return exist.rows[0].id;
 
     const created = await pool.query(
-        `INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id`,
-        [email, "ANONYMOUS_NO_LOGIN"]
+        `INSERT INTO users (email, password_hash, client_id) VALUES ($1, $2, $3) RETURNING id`,
+        [email, "ANONYMOUS_NO_LOGIN", clientId || null]
     );
     return created.rows[0].id;
 }
@@ -1616,6 +1616,127 @@ app.get("/api/client/:slug", async (req, res) => {
         res.status(500).json({ ok: false, error: error.message });
     }
 });
+
+
+// ========================================
+// PAGE CHAT CLIENT (multi-tenant)
+// ========================================
+
+app.get("/c/:slug", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "chat-client.html"));
+});
+
+// Chat pour un client spécifique
+app.post("/api/chat-client", async (req, res) => {
+    try {
+        const message = (req.body.message || "").trim();
+        const sessionId = req.body.sessionId;
+        const conversationIdRecu = req.body.conversationId || null;
+        const slug = req.body.slug;
+
+        if (!message || !sessionId || !slug) {
+            return res.status(400).json({ ok: false, error: "Paramètres manquants." });
+        }
+
+        // Récupérer le client
+        const clientResult = await pool.query(
+            `SELECT id, name, system_prompt, primary_color FROM clients WHERE slug = $1 AND status = 'active'`,
+            [slug]
+        );
+
+        if (clientResult.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+
+        const client = clientResult.rows[0];
+        const clientId = client.id;
+
+        // Créer/récupérer user
+        const userId = await getOrCreateAnonymousUser(sessionId, clientId);
+
+        // Résoudre la conversation
+        let conversationId = null;
+
+        if (conversationIdRecu) {
+            const check = await pool.query(
+                `SELECT id FROM conversations WHERE id = $1 AND user_id = $2`,
+                [conversationIdRecu, userId]
+            );
+            if (check.rows.length > 0) conversationId = check.rows[0].id;
+        }
+
+        if (!conversationId) {
+            const nouvelle = await pool.query(
+                `INSERT INTO conversations (user_id, title, client_id)
+                 VALUES ($1, $2, $3) RETURNING id`,
+                [userId, "Chat client", clientId]
+            );
+            conversationId = nouvelle.rows[0].id;
+        }
+
+        // Sauvegarder le message
+        await pool.query(
+            `INSERT INTO messages (conversation_id, role, content, client_id)
+             VALUES ($1, $2, $3, $4)`,
+            [conversationId, "user", message, clientId]
+        );
+
+        // Historique
+        const historique = await pool.query(
+            `SELECT role, content FROM messages
+             WHERE conversation_id = $1 ORDER BY created_at ASC`,
+            [conversationId]
+        );
+
+        // RAG filtré par client
+        let contexteRAG = "";
+        try {
+            const ragResult = await pool.query(
+                `SELECT content FROM knowledge_base
+                 WHERE client_id = $1 OR client_id IS NULL
+                 LIMIT 5`,
+                [clientId]
+            );
+            if (ragResult.rows.length > 0) {
+                contexteRAG = "\n\n📚 Base de connaissances :\n" +
+                    ragResult.rows.map(r => r.content).join("\n\n");
+            }
+        } catch (e) {
+            console.error("Erreur RAG client :", e);
+        }
+
+        // Réponse IA
+        const systemPrompt = client.system_prompt ||
+            "Tu es un assistant IA amical et professionnel. Réponds en français de façon naturelle et concise.";
+
+        const response = await client.responses.create({
+            model: "gpt-5",
+            instructions: systemPrompt + contexteRAG,
+            input: historique.rows.slice(-6).map(m => ({
+                role: m.role,
+                content: m.content
+            }))
+        });
+
+        const reply = response.output_text;
+
+        await pool.query(
+            `INSERT INTO messages (conversation_id, role, content, client_id)
+             VALUES ($1, $2, $3, $4)`,
+            [conversationId, "assistant", reply, clientId]
+        );
+
+        // Notification
+        envoyerNotificationDiscord(message, reply, sessionId + " [" + client.name + "]").catch(() => {});
+        envoyerNotificationSlack(message, reply, sessionId + " [" + client.name + "]").catch(() => {});
+
+        res.json({ ok: true, reply, conversationId });
+    } catch (error) {
+        console.error("❌ Erreur chat client :", error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
+
 
 
 // ========================================
