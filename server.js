@@ -1648,8 +1648,8 @@ app.post("/api/chat-client", async (req, res) => {
             return res.status(404).json({ ok: false, error: "Client introuvable." });
         }
 
-        const client = clientResult.rows[0];
-        const clientId = client.id;
+        const clientData = clientResult.rows[0];
+        const clientId = clientData.id;
 
         // Créer/récupérer user
         const userId = await getOrCreateAnonymousUser(sessionId, clientId);
@@ -1706,7 +1706,7 @@ app.post("/api/chat-client", async (req, res) => {
         }
 
         // Réponse IA
-        const systemPrompt = client.system_prompt ||
+        const systemPrompt = clientData.system_prompt||
             "Tu es un assistant IA amical et professionnel. Réponds en français de façon naturelle et concise.";
 
         const response = await client.responses.create({
@@ -1727,7 +1727,7 @@ app.post("/api/chat-client", async (req, res) => {
         );
 
         // Notification
-        envoyerNotificationDiscord(message, reply, sessionId + " [" + client.name + "]").catch(() => {});
+        envoyerNotificationDiscord(message, reply, sessionId + " [" + clientData.name + "]").catch(() => {});
         envoyerNotificationSlack(message, reply, sessionId + " [" + client.name + "]").catch(() => {});
 
         res.json({ ok: true, reply, conversationId });
