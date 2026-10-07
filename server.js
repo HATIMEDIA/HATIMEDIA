@@ -1397,12 +1397,28 @@ app.post("/webhook-stripe", async (req, res) => {
 
         console.log("💳 Webhook Stripe reçu :", event.type);
 
-        if (event.type === "checkout.session.completed") {
+       if (event.type === "checkout.session.completed") {
             const session = event.data.object;
             const userId = parseInt(session.metadata?.userId);
+            const clientId = parseInt(session.metadata?.clientId);
+
             if (userId) {
                 await activerPremium(userId, session.customer, session.subscription);
                 console.log(`✅ Premium activé pour user ${userId}`);
+            }
+
+            if (clientId) {
+                await pool.query(
+                    `UPDATE clients SET
+                        plan = 'premium',
+                        status = 'active',
+                        stripe_customer_id = $1,
+                        stripe_subscription_id = $2,
+                        updated_at = NOW()
+                     WHERE id = $3`,
+                    [session.customer, session.subscription, clientId]
+                );
+                console.log(`✅ Premium activé pour client ${clientId}`);
             }
         } else if (
             event.type === "customer.subscription.deleted" ||
@@ -1410,8 +1426,18 @@ app.post("/webhook-stripe", async (req, res) => {
         ) {
             const sub = event.data.object;
             const userId = parseInt(sub.metadata?.userId);
+            const clientId = parseInt(sub.metadata?.clientId);
+
             if (userId && sub.status !== "active") {
                 await desactiverPremium(userId);
+            }
+
+            if (clientId && sub.status !== "active") {
+                await pool.query(
+                    `UPDATE clients SET plan = 'free', updated_at = NOW() WHERE id = $1`,
+                    [clientId]
+                );
+                console.log(`⛔ Client ${clientId} repassé en Free`);
             }
         }
 
@@ -1830,6 +1856,77 @@ app.put("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
         res.json({ ok: true, client: result.rows[0] });
     } catch (error) {
         console.error("Erreur modification client :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+
+// ========================================
+// STRIPE PAR CLIENT (multi-tenant)
+// ========================================
+
+// Créer une session de paiement pour un client
+app.post("/api/stripe/client-checkout", async (req, res) => {
+    try {
+        const { slug } = req.body;
+        if (!slug) {
+            return res.status(400).json({ ok: false, error: "Slug manquant." });
+        }
+
+        // Récupérer le client
+        const clientResult = await pool.query(
+            `SELECT id, name, email, plan FROM clients WHERE slug = $1 AND status = 'active'`,
+            [slug]
+        );
+
+        if (clientResult.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+
+        const clientData = clientResult.rows[0];
+
+        if (clientData.plan === "premium") {
+            return res.status(400).json({ ok: false, error: "Déjà Premium." });
+        }
+
+        const session = await stripe.checkout.sessions.create({
+            mode: "subscription",
+            payment_method_types: ["card"],
+            line_items: [
+                {
+                    price: process.env.STRIPE_PRICE_ID,
+                    quantity: 1
+                }
+            ],
+            customer_email: clientData.email || undefined,
+            success_url: "https://hatimedia.onrender.com/super-admin?premium=ok",
+            cancel_url: "https://hatimedia.onrender.com/super-admin",
+            metadata: {
+                clientId: String(clientData.id),
+                clientSlug: slug
+            }
+        });
+
+        res.json({ ok: true, url: session.url });
+    } catch (error) {
+        console.error("❌ Erreur checkout client :", error.message);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Vérifier le statut Premium d'un client
+app.get("/api/stripe/client-status/:slug", async (req, res) => {
+    try {
+        const { slug } = req.params;
+        const result = await pool.query(
+            `SELECT plan, status FROM clients WHERE slug = $1`,
+            [slug]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+        res.json({ ok: true, ...result.rows[0] });
+    } catch (error) {
         res.status(500).json({ ok: false, error: error.message });
     }
 });

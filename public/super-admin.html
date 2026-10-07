@@ -22,7 +22,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
 .header .actions { display: flex; gap: 10px; }
 .btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: #e0e6ed; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
 .btn:hover { background: #334155; }
-.btn-primary { background: linear-gradient(90deg, #4ade80, #38bdf8); color: #0a0e1a; border: 0; font-weight: bold; }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
 .stat-card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 20px; text-align: center; }
 .stat-card .num { font-size: 32px; font-weight: bold; color: #4ade80; }
@@ -43,13 +42,17 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
 .plan-premium { background: linear-gradient(90deg, #4ade80, #38bdf8); color: #0a0e1a; }
 .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
 .modal.open { display: flex; }
-.modal-content { background: #111827; border-radius: 20px; padding: 30px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid #1f2937; }
+.modal-content { background: #111827; border-radius: 20px; padding: 30px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid #1f2937; position: relative; }
 .modal-content h2 { color: #4ade80; margin-bottom: 20px; }
 .modal-content .close { position: absolute; top: 20px; right: 20px; background: none; border: 0; color: #94a3b8; font-size: 24px; cursor: pointer; }
+.modal-content .close:hover { color: #f87171; }
 .conv-item { padding: 12px; border-bottom: 1px solid #1f2937; }
 .conv-item:last-child { border-bottom: 0; }
 .conv-item .title { font-weight: 600; color: #e0e6ed; margin-bottom: 4px; }
 .conv-item .meta { font-size: 12px; color: #64748b; }
+.btn-premium { background: linear-gradient(90deg, #facc15, #fb923c); color: #0a0e1a; padding: 12px 20px; border: 0; border-radius: 10px; font-weight: bold; cursor: pointer; margin-bottom: 20px; font-size: 14px; }
+.btn-premium:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(250,204,21,.4); }
+.badge-premium { background: linear-gradient(90deg, #4ade80, #38bdf8); color: #0a0e1a; padding: 10px 16px; border-radius: 10px; font-weight: bold; display: inline-block; margin-bottom: 20px; }
 </style>
 </head>
 <body>
@@ -80,7 +83,7 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
 </div>
 
 <div class="modal" id="modal">
-<div class="modal-content" style="position: relative;">
+<div class="modal-content">
 <button class="close" onclick="fermerModal()">✕</button>
 <div id="modalContent"></div>
 </div>
@@ -128,7 +131,6 @@ if (!data.ok) throw new Error(data.error);
 
 var clients = data.clients;
 
-// Stats globales
 var totalConvs = clients.reduce(function(s, c) { return s + parseInt(c.nb_conversations || 0); }, 0);
 var totalMsgs = clients.reduce(function(s, c) { return s + parseInt(c.nb_messages || 0); }, 0);
 var totalUsers = clients.reduce(function(s, c) { return s + parseInt(c.nb_users || 0); }, 0);
@@ -139,7 +141,6 @@ document.getElementById("globalStats").innerHTML =
 '<div class="stat-card"><div class="num">' + totalMsgs + '</div><div class="lbl">📨 Messages</div></div>' +
 '<div class="stat-card"><div class="num">' + totalUsers + '</div><div class="lbl">👤 Utilisateurs</div></div>';
 
-// Cartes clients
 var grid = document.getElementById("clientsGrid");
 grid.innerHTML = "";
 
@@ -181,8 +182,15 @@ var convs = data.conversations;
 
 var html = '<h2>' + c.name + '</h2>' +
 '<p style="color:#94a3b8; margin-bottom:20px;">Slug : <code>/c/' + c.slug + '</code> | Plan : <strong>' + c.plan + '</strong> | Statut : <strong>' + c.status + '</strong></p>' +
-'<p style="margin-bottom:15px;">🔗 <a href="/c/' + c.slug + '" target="_blank" style="color:#38bdf8;">Ouvrir la page chat →</a></p>' +
-'<h3 style="margin-top:25px; margin-bottom:15px; color:#38bdf8;">💬 Dernières conversations</h3>';
+'<p style="margin-bottom:15px;">🔗 <a href="/c/' + c.slug + '" target="_blank" style="color:#38bdf8;">Ouvrir la page chat →</a></p>';
+
+if (c.plan === "premium") {
+html += '<div class="badge-premium">💎 PREMIUM actif</div>';
+} else {
+html += '<button class="btn-premium" onclick="passerPremium(\'' + c.slug + '\')">💎 Passer au Premium (19€/mois)</button>';
+}
+
+html += '<h3 style="margin-top:25px; margin-bottom:15px; color:#38bdf8;">💬 Dernières conversations</h3>';
 
 if (convs.length === 0) {
 html += '<p style="color:#64748b;">Aucune conversation.</p>';
@@ -199,6 +207,24 @@ document.getElementById("modalContent").innerHTML = html;
 document.getElementById("modal").classList.add("open");
 } catch (e) {
 console.error(e);
+}
+}
+
+async function passerPremium(slug) {
+try {
+var r = await fetch("/api/stripe/client-checkout", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ slug: slug })
+});
+var data = await r.json();
+if (data.ok && data.url) {
+window.location.href = data.url;
+} else {
+alert("❌ " + (data.error || "Erreur"));
+}
+} catch (e) {
+alert("❌ Connexion impossible.");
 }
 }
 
