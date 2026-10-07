@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HATIMEDIA — Super Admin</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0a0e1a; color: #e0e6ed; min-height: 100vh; }
+.login-panel { position: fixed; inset: 0; background: linear-gradient(135deg, #0a0e1a, #111827); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+.login-box { width: 100%; max-width: 420px; margin: 20px; background: #111827; padding: 40px 35px; border-radius: 24px; box-shadow: 0 30px 80px rgba(0,0,0,.6); border: 1px solid #1f2937; }
+.login-box .logo { text-align: center; font-size: 55px; margin-bottom: 15px; }
+.login-box h2 { text-align: center; margin: 0 0 25px; color: #e0e6ed; font-size: 22px; }
+.login-box input { width: 100%; padding: 14px 16px; margin: 8px 0; border: 1px solid #334155; border-radius: 12px; background: #0a0e1a; color: #e0e6ed; font-size: 15px; outline: none; }
+.login-box input:focus { border-color: #4ade80; }
+.login-box button { width: 100%; padding: 15px; margin-top: 15px; border: 0; border-radius: 12px; background: linear-gradient(90deg, #4ade80, #38bdf8); color: #0a0e1a; font-size: 16px; font-weight: bold; cursor: pointer; }
+.login-box button:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(74,222,128,.4); }
+.login-box .error { margin-top: 12px; color: #f87171; text-align: center; font-size: 13px; min-height: 20px; }
+.container { max-width: 1200px; margin: 0 auto; padding: 30px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 1px solid #1f2937; }
+.header h1 { font-size: 28px; background: linear-gradient(90deg, #4ade80, #38bdf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+.header .actions { display: flex; gap: 10px; }
+.btn { padding: 10px 20px; border-radius: 10px; border: 1px solid #334155; background: #1e293b; color: #e0e6ed; font-size: 14px; cursor: pointer; text-decoration: none; display: inline-block; }
+.btn:hover { background: #334155; }
+.btn-primary { background: linear-gradient(90deg, #4ade80, #38bdf8); color: #0a0e1a; border: 0; font-weight: bold; }
+.stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 30px; }
+.stat-card { background: #111827; border: 1px solid #1f2937; border-radius: 12px; padding: 20px; text-align: center; }
+.stat-card .num { font-size: 32px; font-weight: bold; color: #4ade80; }
+.stat-card .lbl { color: #94a3b8; font-size: 13px; margin-top: 5px; }
+.clients-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+.client-card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 25px; transition: transform 0.2s, border-color 0.2s; cursor: pointer; }
+.client-card:hover { transform: translateY(-5px); border-color: #4ade80; }
+.client-card .header-card { display: flex; align-items: center; gap: 12px; margin-bottom: 15px; }
+.client-card .avatar { width: 50px; height: 50px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 22px; font-weight: bold; color: #fff; }
+.client-card h3 { font-size: 17px; margin-bottom: 4px; }
+.client-card .slug { font-size: 12px; color: #64748b; font-family: monospace; }
+.client-card .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 15px; padding-top: 15px; border-top: 1px solid #1f2937; }
+.client-card .stats-row div { text-align: center; }
+.client-card .stats-row .n { font-size: 20px; font-weight: bold; color: #38bdf8; }
+.client-card .stats-row .l { font-size: 11px; color: #64748b; }
+.client-card .plan-badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: bold; margin-top: 8px; }
+.plan-free { background: #334155; color: #cbd5e1; }
+.plan-premium { background: linear-gradient(90deg, #4ade80, #38bdf8); color: #0a0e1a; }
+.modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7); z-index: 9999; align-items: center; justify-content: center; padding: 20px; }
+.modal.open { display: flex; }
+.modal-content { background: #111827; border-radius: 20px; padding: 30px; max-width: 800px; width: 100%; max-height: 90vh; overflow-y: auto; border: 1px solid #1f2937; }
+.modal-content h2 { color: #4ade80; margin-bottom: 20px; }
+.modal-content .close { position: absolute; top: 20px; right: 20px; background: none; border: 0; color: #94a3b8; font-size: 24px; cursor: pointer; }
+.conv-item { padding: 12px; border-bottom: 1px solid #1f2937; }
+.conv-item:last-child { border-bottom: 0; }
+.conv-item .title { font-weight: 600; color: #e0e6ed; margin-bottom: 4px; }
+.conv-item .meta { font-size: 12px; color: #64748b; }
+</style>
+</head>
+<body>
+
+<div class="login-panel" id="loginPanel">
+<div class="login-box">
+<div class="logo">🛡️</div>
+<h2>Super Admin HATIMEDIA</h2>
+<input id="loginEmail" type="email" placeholder="Email admin">
+<input id="loginPassword" type="password" placeholder="Mot de passe">
+<button onclick="connexion()">Se connecter</button>
+<div class="error" id="loginError"></div>
+</div>
+</div>
+
+<div class="container" id="mainContainer" style="display:none;">
+<div class="header">
+<h1>🛡️ Super Admin — Tous les clients</h1>
+<div class="actions">
+<button class="btn" onclick="chargerClients()">🔄 Rafraîchir</button>
+<button class="btn" onclick="deconnexion()">🚪 Déconnexion</button>
+</div>
+</div>
+
+<div class="stats" id="globalStats"></div>
+
+<div class="clients-grid" id="clientsGrid"></div>
+</div>
+
+<div class="modal" id="modal">
+<div class="modal-content" style="position: relative;">
+<button class="close" onclick="fermerModal()">✕</button>
+<div id="modalContent"></div>
+</div>
+</div>
+
+<script>
+var token = localStorage.getItem("hatimedia_token");
+
+async function connexion() {
+var email = document.getElementById("loginEmail").value.trim();
+var password = document.getElementById("loginPassword").value;
+var erreur = document.getElementById("loginError");
+erreur.textContent = "";
+
+try {
+var r = await fetch("/api/login", {
+method: "POST",
+headers: { "Content-Type": "application/json" },
+body: JSON.stringify({ email, password })
+});
+var data = await r.json();
+if (!data.token) throw new Error(data.error || "Erreur");
+localStorage.setItem("hatimedia_token", data.token);
+token = data.token;
+document.getElementById("loginPanel").style.display = "none";
+document.getElementById("mainContainer").style.display = "block";
+chargerClients();
+} catch (e) {
+erreur.textContent = e.message;
+}
+}
+
+function deconnexion() {
+localStorage.removeItem("hatimedia_token");
+location.reload();
+}
+
+async function chargerClients() {
+try {
+var r = await fetch("/api/super-admin/clients", {
+headers: { "Authorization": "Bearer " + token }
+});
+var data = await r.json();
+if (!data.ok) throw new Error(data.error);
+
+var clients = data.clients;
+
+// Stats globales
+var totalConvs = clients.reduce(function(s, c) { return s + parseInt(c.nb_conversations || 0); }, 0);
+var totalMsgs = clients.reduce(function(s, c) { return s + parseInt(c.nb_messages || 0); }, 0);
+var totalUsers = clients.reduce(function(s, c) { return s + parseInt(c.nb_users || 0); }, 0);
+
+document.getElementById("globalStats").innerHTML =
+'<div class="stat-card"><div class="num">' + clients.length + '</div><div class="lbl">👥 Clients</div></div>' +
+'<div class="stat-card"><div class="num">' + totalConvs + '</div><div class="lbl">💬 Conversations</div></div>' +
+'<div class="stat-card"><div class="num">' + totalMsgs + '</div><div class="lbl">📨 Messages</div></div>' +
+'<div class="stat-card"><div class="num">' + totalUsers + '</div><div class="lbl">👤 Utilisateurs</div></div>';
+
+// Cartes clients
+var grid = document.getElementById("clientsGrid");
+grid.innerHTML = "";
+
+clients.forEach(function(c) {
+var planClass = c.plan === "premium" ? "plan-premium" : "plan-free";
+var initiale = (c.name || "?").charAt(0).toUpperCase();
+var card = document.createElement("div");
+card.className = "client-card";
+card.onclick = function() { ouvrirClient(c.id); };
+card.innerHTML =
+'<div class="header-card">' +
+'<div class="avatar" style="background: linear-gradient(135deg, ' + (c.primary_color || '#4ade80') + ', ' + (c.secondary_color || '#38bdf8') + ');">' + initiale + '</div>' +
+'<div><h3>' + c.name + '</h3><div class="slug">/c/' + c.slug + '</div></div>' +
+'</div>' +
+'<span class="plan-badge ' + planClass + '">' + c.plan.toUpperCase() + '</span>' +
+'<div class="stats-row">' +
+'<div><div class="n">' + c.nb_conversations + '</div><div class="l">Conv.</div></div>' +
+'<div><div class="n">' + c.nb_messages + '</div><div class="l">Messages</div></div>' +
+'<div><div class="n">' + c.nb_users + '</div><div class="l">Users</div></div>' +
+'</div>';
+grid.appendChild(card);
+});
+} catch (e) {
+console.error(e);
+alert("Erreur chargement : " + e.message);
+}
+}
+
+async function ouvrirClient(clientId) {
+try {
+var r = await fetch("/api/super-admin/clients/" + clientId, {
+headers: { "Authorization": "Bearer " + token }
+});
+var data = await r.json();
+if (!data.ok) throw new Error(data.error);
+
+var c = data.client;
+var convs = data.conversations;
+
+var html = '<h2>' + c.name + '</h2>' +
+'<p style="color:#94a3b8; margin-bottom:20px;">Slug : <code>/c/' + c.slug + '</code> | Plan : <strong>' + c.plan + '</strong> | Statut : <strong>' + c.status + '</strong></p>' +
+'<p style="margin-bottom:15px;">🔗 <a href="/c/' + c.slug + '" target="_blank" style="color:#38bdf8;">Ouvrir la page chat →</a></p>' +
+'<h3 style="margin-top:25px; margin-bottom:15px; color:#38bdf8;">💬 Dernières conversations</h3>';
+
+if (convs.length === 0) {
+html += '<p style="color:#64748b;">Aucune conversation.</p>';
+} else {
+convs.forEach(function(conv) {
+html += '<div class="conv-item">' +
+'<div class="title">' + (conv.title || "Sans titre") + '</div>' +
+'<div class="meta">' + conv.nb_messages + ' messages · Dernier : ' + (conv.last_message || "-").slice(0, 80) + '</div>' +
+'</div>';
+});
+}
+
+document.getElementById("modalContent").innerHTML = html;
+document.getElementById("modal").classList.add("open");
+} catch (e) {
+console.error(e);
+}
+}
+
+function fermerModal() {
+document.getElementById("modal").classList.remove("open");
+}
+
+if (token) {
+document.getElementById("loginPanel").style.display = "none";
+document.getElementById("mainContainer").style.display = "block";
+chargerClients();
+}
+</script>
+
+</body>
+</html>

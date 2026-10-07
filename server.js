@@ -1739,6 +1739,103 @@ app.post("/api/chat-client", async (req, res) => {
 });
 
 
+// ========================================
+// SUPER ADMIN (multi-tenant)
+// ========================================
+
+app.get("/super-admin", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "super-admin.html"));
+});
+
+// Liste des clients avec stats
+app.get("/api/super-admin/clients", verifierToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                c.id, c.slug, c.name, c.email, c.plan, c.status, c.created_at,
+                c.primary_color, c.secondary_color,
+                (SELECT COUNT(*) FROM conversations WHERE client_id = c.id) AS nb_conversations,
+                (SELECT COUNT(*) FROM messages WHERE client_id = c.id) AS nb_messages,
+                (SELECT COUNT(*) FROM users WHERE client_id = c.id) AS nb_users
+            FROM clients c
+            ORDER BY c.created_at DESC
+        `);
+
+        res.json({ ok: true, clients: result.rows });
+    } catch (error) {
+        console.error("Erreur super-admin clients :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Détail d'un client
+app.get("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
+    try {
+        const clientId = req.params.id;
+
+        const clientResult = await pool.query(
+            `SELECT * FROM clients WHERE id = $1`,
+            [clientId]
+        );
+
+        if (clientResult.rows.length === 0) {
+            return res.status(404).json({ ok: false, error: "Client introuvable." });
+        }
+
+        // Dernières conversations
+        const convsResult = await pool.query(
+            `SELECT c.id, c.title, c.created_at,
+                    (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) AS nb_messages,
+                    (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) AS last_message
+             FROM conversations c
+             WHERE c.client_id = $1
+             ORDER BY c.created_at DESC
+             LIMIT 10`,
+            [clientId]
+        );
+
+        res.json({
+            ok: true,
+            client: clientResult.rows[0],
+            conversations: convsResult.rows
+        });
+    } catch (error) {
+        console.error("Erreur super-admin détail :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+// Modifier un client (super admin)
+app.put("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
+    try {
+        const clientId = req.params.id;
+        const { name, email, primary_color, secondary_color, welcome_message, system_prompt, plan, status } = req.body;
+
+        const result = await pool.query(
+            `UPDATE clients SET
+                name = COALESCE($1, name),
+                email = COALESCE($2, email),
+                primary_color = COALESCE($3, primary_color),
+                secondary_color = COALESCE($4, secondary_color),
+                welcome_message = COALESCE($5, welcome_message),
+                system_prompt = COALESCE($6, system_prompt),
+                plan = COALESCE($7, plan),
+                status = COALESCE($8, status),
+                updated_at = NOW()
+             WHERE id = $9
+             RETURNING *`,
+            [name, email, primary_color, secondary_color, welcome_message, system_prompt, plan, status, clientId]
+        );
+
+        res.json({ ok: true, client: result.rows[0] });
+    } catch (error) {
+        console.error("Erreur modification client :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+
+
 
 // ========================================
 // DÉMARRAGE DU SERVEUR
