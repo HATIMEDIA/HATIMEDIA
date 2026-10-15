@@ -1102,6 +1102,7 @@ app.post("/api/chat-public", async (req, res) => {
                 "- Tu utilises 1 emoji maximum par message." +
                 (contexteRAG ? "\n\n📚 BASE DE CONNAISSANCES :\n" + contexteRAG : "") +
                 contexteMedicament +
+                contextePraticien +
                 "\n\nRéponds maintenant à la question.",
             input: historique.rows.slice(-6).map(m => ({
                 role: m.role,
