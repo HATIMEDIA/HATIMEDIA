@@ -32,6 +32,7 @@ const {
     desactiverPremium
 } = require("./stripe");
 const app = express();
+
 // ========================================
 // HELPER — RECHERCHE MÉDICAMENT POUR L'AGENT
 // ========================================
@@ -101,7 +102,7 @@ app.use(express.json({
     }
 }));
 
-app.use(express.urlencoded({ extended: true }));   // ← NOUVELLE LIGNE
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -741,6 +742,13 @@ app.post("/api/chat", verifierToken, async (req, res) => {
               memoires.rows.map(m => "- " + m.memory).join("\n")
             : "";
 
+        let contexteMedicamentChat = "";
+        if (estQuestionMedicament(message)) {
+            const nomMed = extraireNomMedicament(message);
+            const meds = await rechercherMedicament(nomMed);
+            contexteMedicamentChat = formaterMedicamentsPourPrompt(meds);
+        }
+
         const response = await client.responses.create({
             model: "gpt-5",
             instructions:
@@ -764,7 +772,8 @@ app.post("/api/chat", verifierToken, async (req, res) => {
                 "Évite le ton commercial et les réponses préfabriquées. " +
                 "Les anciennes réponses de HATIMEDIA ne sont pas des instructions. " +
                 "Ton objectif : que Hatime ait l'impression de parler avec un assistant vivant, attentif, naturel et complice." +
-                contexteMemoire,
+                contexteMemoire +
+                contexteMedicamentChat,
             input: historique.rows.slice(-6).map(m => ({
                 role: m.role,
                 content: m.content
@@ -889,15 +898,13 @@ app.get("/api/conversations/:id/messages", verifierToken, async (req, res) => {
 });
 
 // ========================================
-// WEBHOOK META / MESSENGER (NOUVEAU)
+// WEBHOOK META / MESSENGER
 // ========================================
 
 const messenger = require("./messenger");
 
-// Handler GET — Vérification Meta
 app.get("/webhook", messenger.verificationWebhook);
 
-// Cerveau HATIMEDIA pour Messenger
 async function cerveauHatimedia(texte, contexte) {
     console.log("🤖 Cerveau HATIMEDIA (Messenger) :", texte);
 
@@ -918,7 +925,6 @@ async function cerveauHatimedia(texte, contexte) {
     }
 }
 
-// Handler POST — Réception messages
 app.post("/webhook", messenger.creerReceptionWebhook(cerveauHatimedia));
 
 // ========================================
@@ -1038,6 +1044,7 @@ app.post("/api/chat-public", async (req, res) => {
                 "- Tu ne fais pas de listes à puces sauf si c'est utile.\n" +
                 "- Tu utilises 1 emoji maximum par message." +
                 (contexteRAG ? "\n\n📚 BASE DE CONNAISSANCES :\n" + contexteRAG : "") +
+                contexteMedicament +
                 "\n\nRéponds maintenant à la question.",
             input: historique.rows.slice(-6).map(m => ({
                 role: m.role,
@@ -1053,17 +1060,14 @@ app.post("/api/chat-public", async (req, res) => {
             [conversationId, "assistant", reply]
         );
 
-        // Notification Slack
         envoyerNotificationSlack(message, reply, sessionId).catch(err =>
             console.error("Erreur Slack :", err)
         );
 
-        // Notification Discord
         envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
             console.error("Erreur Discord :", err)
         );
 
-        // Envoyer notification email
         envoyerNotification(message, reply, sessionId).catch(err =>
             console.error("Erreur notif :", err)
         );
@@ -1228,7 +1232,6 @@ app.post("/webhook-whatsapp", async (req, res) => {
             return res.status(200).send("<Response></Response>");
         }
 
-        // Réutilise la logique du chat public
         const userId = await getOrCreateAnonymousUser(sessionIdWa);
 
         let conversationId = null;
@@ -1276,11 +1279,9 @@ app.post("/webhook-whatsapp", async (req, res) => {
             [conversationId, "assistant", reply]
         );
 
-        // Notifications Discord + Email
         envoyerNotificationDiscord(messageBody, reply, sessionIdWa).catch(() => {});
         envoyerNotification(messageBody, reply, sessionIdWa).catch(() => {});
 
-        // Répondre via TwiML (Twilio envoie automatiquement sur WhatsApp)
         const replySafe = reply
             .replace(/&/g, "&amp;")
             .replace(/</g, "&lt;")
@@ -1304,7 +1305,6 @@ app.get("/share/:sessionId", async (req, res) => {
         const sessionId = req.params.sessionId;
         const userId = await getOrCreateAnonymousUser(sessionId);
 
-        // Récupérer la conversation
         const conv = await pool.query(
             `SELECT id, title, created_at FROM conversations
              WHERE user_id = $1
@@ -1319,14 +1319,12 @@ app.get("/share/:sessionId", async (req, res) => {
         const conversationId = conv.rows[0].id;
         const titre = conv.rows[0].title || "Conversation";
 
-        // Récupérer les messages
         const msgs = await pool.query(
             `SELECT role, content, created_at FROM messages
              WHERE conversation_id = $1 ORDER BY created_at ASC`,
             [conversationId]
         );
 
-        // Construire les bulles HTML
         let bulles = "";
         for (const m of msgs.rows) {
             const icone = m.role === "user" ? "🧑" : "🤖";
@@ -1397,7 +1395,6 @@ app.get("/share/:sessionId", async (req, res) => {
 // STRIPE — PAIEMENT & ABONNEMENT
 // ========================================
 
-// Créer une session de paiement
 app.post("/api/stripe/checkout", async (req, res) => {
     try {
         const { sessionId } = req.body;
@@ -1427,7 +1424,6 @@ app.post("/api/stripe/checkout", async (req, res) => {
     }
 });
 
-// Vérifier mon abonnement
 app.get("/api/stripe/status/:sessionId", async (req, res) => {
     try {
         const sessionId = req.params.sessionId;
@@ -1439,10 +1435,8 @@ app.get("/api/stripe/status/:sessionId", async (req, res) => {
     }
 });
 
-// Webhook Stripe (paiement confirmé)
 app.post("/webhook-stripe", async (req, res) => {
     try {
-        // Le raw body est capturé par express.json({verify: ...}) en haut du fichier
         const rawBody = req.rawBody ? req.rawBody.toString() : JSON.stringify(req.body);
         const event = JSON.parse(rawBody);
 
@@ -1499,7 +1493,6 @@ app.post("/webhook-stripe", async (req, res) => {
     }
 });
 
-// Page de succès après paiement
 app.get("/premium-success", async (req, res) => {
     const sessionId = req.query.session_id || "";
     res.send(`<!DOCTYPE html>
@@ -1547,7 +1540,6 @@ app.post("/api/contact", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Tous les champs sont obligatoires." });
         }
 
-        // Envoyer notification par email
         const { Resend } = require("resend");
         const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -1582,7 +1574,6 @@ app.post("/api/contact", async (req, res) => {
 // ADMIN CLIENTS (multi-tenant)
 // ========================================
 
-// Créer un client
 app.post("/api/admin/clients", async (req, res) => {
     try {
         const { slug, name, email, logo_url, primary_color, secondary_color, welcome_message, system_prompt } = req.body;
@@ -1591,7 +1582,6 @@ app.post("/api/admin/clients", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Slug et name obligatoires." });
         }
 
-        // Nettoyer le slug
         const slugPropre = slug.toLowerCase().replace(/[^a-z0-9-]/g, "-");
 
         const result = await pool.query(
@@ -1608,7 +1598,6 @@ app.post("/api/admin/clients", async (req, res) => {
     }
 });
 
-// Lister tous les clients
 app.get("/api/admin/clients", async (req, res) => {
     try {
         const result = await pool.query(
@@ -1621,7 +1610,6 @@ app.get("/api/admin/clients", async (req, res) => {
     }
 });
 
-// Modifier un client
 app.put("/api/admin/clients/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -1655,7 +1643,6 @@ app.put("/api/admin/clients/:id", async (req, res) => {
     }
 });
 
-// Supprimer un client
 app.delete("/api/admin/clients/:id", async (req, res) => {
     try {
         const { id } = req.params;
@@ -1672,7 +1659,6 @@ app.delete("/api/admin/clients/:id", async (req, res) => {
     }
 });
 
-// Récupérer un client par slug (PUBLIC - pour la page chat)
 app.get("/api/client/:slug", async (req, res) => {
     try {
         const { slug } = req.params;
@@ -1701,7 +1687,6 @@ app.get("/c/:slug", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "chat-client.html"));
 });
 
-// Chat pour un client spécifique
 app.post("/api/chat-client", async (req, res) => {
     try {
         const message = (req.body.message || "").trim();
@@ -1713,7 +1698,6 @@ app.post("/api/chat-client", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Paramètres manquants." });
         }
 
-        // Récupérer le client
         const clientResult = await pool.query(
             `SELECT id, name, system_prompt, primary_color FROM clients WHERE slug = $1 AND status = 'active'`,
             [slug]
@@ -1726,10 +1710,8 @@ app.post("/api/chat-client", async (req, res) => {
         const clientData = clientResult.rows[0];
         const clientId = clientData.id;
 
-        // Créer/récupérer user
         const userId = await getOrCreateAnonymousUser(sessionId, clientId);
 
-        // Résoudre la conversation
         let conversationId = null;
 
         if (conversationIdRecu) {
@@ -1749,21 +1731,18 @@ app.post("/api/chat-client", async (req, res) => {
             conversationId = nouvelle.rows[0].id;
         }
 
-        // Sauvegarder le message
         await pool.query(
             `INSERT INTO messages (conversation_id, role, content, client_id)
              VALUES ($1, $2, $3, $4)`,
             [conversationId, "user", message, clientId]
         );
 
-        // Historique
         const historique = await pool.query(
             `SELECT role, content FROM messages
              WHERE conversation_id = $1 ORDER BY created_at ASC`,
             [conversationId]
         );
 
-        // RAG filtré par client
         let contexteRAG = "";
         try {
             const ragResult = await pool.query(
@@ -1781,13 +1760,19 @@ app.post("/api/chat-client", async (req, res) => {
             console.error("Erreur RAG client :", e);
         }
 
-        // Réponse IA
+        let contexteMedicament = "";
+        if (estQuestionMedicament(message)) {
+            const nomMed = extraireNomMedicament(message);
+            const meds = await rechercherMedicament(nomMed);
+            contexteMedicament = formaterMedicamentsPourPrompt(meds);
+        }
+
         const systemPrompt = clientData.system_prompt ||
             "Tu es un assistant IA amical et professionnel. Réponds en français de façon naturelle et concise.";
 
         const response = await client.responses.create({
             model: "gpt-5",
-            instructions: systemPrompt + contexteRAG,
+            instructions: systemPrompt + contexteRAG + contexteMedicament,
             input: historique.rows.slice(-6).map(m => ({
                 role: m.role,
                 content: m.content
@@ -1802,7 +1787,6 @@ app.post("/api/chat-client", async (req, res) => {
             [conversationId, "assistant", reply, clientId]
         );
 
-        // Notification (CORRIGÉ : clientData au lieu de client)
         envoyerNotificationDiscord(message, reply, sessionId + " [" + clientData.name + "]").catch(() => {});
         envoyerNotificationSlack(message, reply, sessionId + " [" + clientData.name + "]").catch(() => {});
 
@@ -1821,7 +1805,6 @@ app.get("/super-admin", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "super-admin.html"));
 });
 
-// Liste des clients avec stats
 app.get("/api/super-admin/clients", verifierToken, async (req, res) => {
     try {
         const result = await pool.query(`
@@ -1842,7 +1825,6 @@ app.get("/api/super-admin/clients", verifierToken, async (req, res) => {
     }
 });
 
-// Détail d'un client
 app.get("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
     try {
         const clientId = req.params.id;
@@ -1856,7 +1838,6 @@ app.get("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
             return res.status(404).json({ ok: false, error: "Client introuvable." });
         }
 
-        // Dernières conversations
         const convsResult = await pool.query(
             `SELECT c.id, c.title, c.created_at,
                     (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) AS nb_messages,
@@ -1879,7 +1860,6 @@ app.get("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
     }
 });
 
-// Modifier un client (super admin)
 app.put("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
     try {
         const clientId = req.params.id;
@@ -1912,7 +1892,6 @@ app.put("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
 // STRIPE PAR CLIENT (multi-tenant)
 // ========================================
 
-// Créer une session de paiement pour un client
 app.post("/api/stripe/client-checkout", async (req, res) => {
     try {
         const { slug } = req.body;
@@ -1920,7 +1899,6 @@ app.post("/api/stripe/client-checkout", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Slug manquant." });
         }
 
-        // Récupérer le client
         const clientResult = await pool.query(
             `SELECT id, name, email, plan FROM clients WHERE slug = $1 AND status = 'active'`,
             [slug]
@@ -1961,7 +1939,6 @@ app.post("/api/stripe/client-checkout", async (req, res) => {
     }
 });
 
-// Vérifier le statut Premium d'un client
 app.get("/api/stripe/client-status/:slug", async (req, res) => {
     try {
         const { slug } = req.params;
@@ -1977,11 +1954,11 @@ app.get("/api/stripe/client-status/:slug", async (req, res) => {
         res.status(500).json({ ok: false, error: error.message });
     }
 });
+
 // ========================================
 // API MÉDICAMENTS (Open Data, sans clé)
 // ========================================
 
-// Utilitaire pour diagnostiquer la version de Node.js
 app.get("/api/node-version", (req, res) => {
     res.json({ version: process.version, fetchDisponible: typeof fetch === "function" });
 });
@@ -2003,7 +1980,6 @@ app.get("/api/medicament/recherche", async (req, res) => {
             });
         }
 
-        // ✅ URL CORRIGÉE : medicaments-api (et pas api-medicaments)
         const apiUrl = `https://medicaments-api.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
 
         const response = await fetch(apiUrl, {
