@@ -1914,6 +1914,11 @@ app.get("/api/stripe/client-status/:slug", async (req, res) => {
 // API MÉDICAMENTS (Open Data, sans clé)
 // ========================================
 
+// Utilitaire pour diagnostiquer la version de Node.js
+app.get("/api/node-version", (req, res) => {
+    res.json({ version: process.version, fetchDisponible: typeof fetch === "function" });
+});
+
 app.get("/api/medicament/recherche", async (req, res) => {
     try {
         const recherche = req.query.q;
@@ -1922,22 +1927,52 @@ app.get("/api/medicament/recherche", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Paramètre 'q' manquant." });
         }
 
-        // API publique des médicaments (BDPM) — gratuite, sans clé
-        const apiUrl = `https://api-medicaments.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
+        // On vérifie que fetch est bien disponible (Node 18+)
+        if (typeof fetch !== "function") {
+            console.error("❌ fetch n'est pas disponible dans cette version de Node.js.");
+            return res.status(500).json({
+                ok: false,
+                error: "fetch indisponible. Vérifiez la version de Node.js sur Render.",
+                nodeVersion: process.version
+            });
+        }
 
-        const response = await fetch(apiUrl);
+        const apiUrl = `https://api-medicaments.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
+        console.log("🔍 Appel API médicament :", apiUrl);
+
+        const response = await fetch(apiUrl, {
+            method: "GET",
+            headers: {
+                "Accept": "application/json",
+                "User-Agent": "HATIMEDIA/1.0"
+            }
+        });
+
+        console.log("📡 Statut de la réponse :", response.status);
 
         if (!response.ok) {
-            return res.status(response.status).json({ ok: false, error: "Erreur API médicament" });
+            const texteErreur = await response.text();
+            console.error("❌ Erreur API externe :", response.status, texteErreur);
+            return res.status(response.status).json({
+                ok: false,
+                error: `Erreur API externe (${response.status})`,
+                details: texteErreur.slice(0, 200)
+            });
         }
 
         const data = await response.json();
+        console.log("✅ Données reçues :", JSON.stringify(data).slice(0, 200));
 
         res.json({ ok: true, recherche: recherche, resultats: data });
 
     } catch (error) {
-        console.error("❌ Erreur recherche médicament :", error);
-        res.status(500).json({ ok: false, error: "Erreur serveur." });
+        console.error("❌ Erreur détaillée recherche médicament :", error);
+        res.status(500).json({
+            ok: false,
+            error: "Erreur serveur.",
+            details: error.message,
+            stack: error.stack ? error.stack.split("\n")[0] : "N/A"
+        });
     }
 });
 
