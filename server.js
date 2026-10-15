@@ -148,8 +148,31 @@ async function chercherPraticien(specialite, ville) {
 
 function formaterPraticiensPourPrompt(texteResultat) {
     if (!texteResultat) return "";
-    return "\n\n🩺 PRATICIENS TROUVÉS (annuaire officiel RPPS) :\n" + texteResultat +
-           "\n\nUtilise ces données pour répondre. Présente les praticiens de façon claire (nom, spécialité, ville, adresse). N'invente JAMAIS de praticien ou de coordonnées.\n";
+    let data;
+    try {
+        data = typeof texteResultat === "string" ? JSON.parse(texteResultat) : texteResultat;
+    } catch (e) {
+        console.error("Parse praticiens impossible :", e.message);
+        return "";
+    }
+
+    const liste = (data && Array.isArray(data.praticiens)) ? data.praticiens : [];
+    const avecAdresse = liste.filter(p => p.adresse && p.commune);
+
+    if (avecAdresse.length === 0) {
+        return "\n\n🩺 PRATICIENS : aucun praticien avec adresse trouvé pour cette recherche. Dis-le à l'utilisateur honnêtement et propose de préciser la ville ou le code postal.\n";
+    }
+
+    let texte = "\n\n🩺 PRATICIENS TROUVÉS (annuaire officiel RPPS) :\n";
+    for (const p of avecAdresse.slice(0, 5)) {
+        texte += `- ${p.civilite || ""} ${p.nom} — ${p.specialite}`;
+        if (p.adresse) texte += ` — ${p.adresse}`;
+        if (p.telephone) texte += ` — Tél : ${p.telephone}`;
+        if (p.fiche_url) texte += ` — Fiche : ${p.fiche_url}`;
+        texte += "\n";
+    }
+    texte += "\nLISTE ces praticiens à l'utilisateur (nom, spécialité, adresse, téléphone). Ne demande pas de précisions supplémentaires si tu as déjà des résultats.\n";
+    return texte;
 }
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
