@@ -95,6 +95,63 @@ function formaterMedicamentsPourPrompt(data) {
     return texte;
 }
 
+// ========================================
+// HELPER — RECHERCHE DE PRATICIEN (annuaire public)
+// ========================================
+
+const MOTS_CLES_PRATICIEN = [
+    "medecin", "docteur", "praticien", "specialiste", "generaliste",
+    "cardio", "dermato", "ophtalmo", "pediatre", "gyneco", "dentiste",
+    "kine", "osteo", "psy", "psychiatre", "psychologue",
+    "rendez-vous", "rendez vous", "rdv", "consultation", "cabinet"
+];
+
+function estQuestionPraticien(message) {
+    if (!message || typeof message !== "string") return false;
+    const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return MOTS_CLES_PRATICIEN.some(mot => m.includes(mot));
+}
+
+async function chercherPraticien(specialite, ville) {
+    try {
+        const payload = {
+            jsonrpc: "2.0",
+            id: 1,
+            method: "tools/call",
+            params: {
+                name: "search_praticiens",
+                arguments: {
+                    specialite: specialite || "",
+                    ville: ville || ""
+                }
+            }
+        };
+
+        const response = await fetch("https://monsuivimedical.fr/mcp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+
+        if (data.result && data.result.content && data.result.content[0]) {
+            return data.result.content[0].text;
+        }
+        return null;
+    } catch (error) {
+        console.error("Erreur recherche praticien :", error.message);
+        return null;
+    }
+}
+
+function formaterPraticiensPourPrompt(texteResultat) {
+    if (!texteResultat) return "";
+    return "\n\n🩺 PRATICIENS TROUVÉS (annuaire officiel RPPS) :\n" + texteResultat +
+           "\n\nUtilise ces données pour répondre. Présente les praticiens de façon claire (nom, spécialité, ville, adresse). N'invente JAMAIS de praticien ou de coordonnées.\n";
+}
+
 // ⚠️ Capture du RAW BODY pour la signature Meta
 app.use(express.json({
     verify: (req, res, buf) => {
