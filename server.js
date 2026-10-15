@@ -2077,6 +2077,29 @@ app.get("/api/medicament/recherche", async (req, res) => {
 });
 
 // ========================================
+// API PRATICIENS (annuaire public, sans clé)
+// ========================================
+
+app.get("/api/praticien/recherche", async (req, res) => {
+    try {
+        const specialite = req.query.specialite || "";
+        const ville = req.query.ville || "";
+
+        if (!specialite && !ville) {
+            return res.status(400).json({ ok: false, error: "Précisez 'specialite' ou 'ville'." });
+        }
+
+        const resultat = await chercherPraticien(specialite, ville);
+        res.json({ ok: true, specialite, ville, resultat });
+    } catch (error) {
+        console.error("❌ Erreur praticien :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+
+
+// ========================================
 // DÉMARRAGE DU SERVEUR
 // ========================================
 
