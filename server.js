@@ -13,7 +13,6 @@ const multer = require("multer");
 const { choisirAgent, determinerAction, creerAction } = require("./orchestrateur");
 const { preparerMessage, validerMessage, demanderConfirmation } = require("./outil-messagerie");
 
-
 // Gmail désactivé sur Render (credentials.json en local uniquement)
 // const { envoyerEmail } = require("./gmail");
 let envoyerEmail = async () => { throw new Error("Gmail désactivé"); };
@@ -41,28 +40,23 @@ app.use(express.json({
     }
 }));
 
-
 app.use(express.urlencoded({ extended: true }));   // ← NOUVELLE LIGNE
 app.use(express.static("public"));
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-const NEON_URL = "postgresql://neondb_owner:npg_Mgj98WxFaJUY@ep-rapid-silence-b2r6id56-pooler.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
+const NEON_URL = "postgresql://neondb_owner:MOTDEPASSS@ep-rapid-silence-b2r6id56-pooler.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 const pool = new Pool({ connectionString: NEON_URL, ssl: { rejectUnauthorized: false } });
-
 
 // Page de chat publique (sans login)
 app.get("/chat", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "chat.html"));
-
 });
 
 // Page admin
 app.get("/admin", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "admin.html"));
 });
-
-
 
 // ========================================
 // TESTS
@@ -866,7 +860,6 @@ async function cerveauHatimedia(texte, contexte) {
 // Handler POST — Réception messages
 app.post("/webhook", messenger.creerReceptionWebhook(cerveauHatimedia));
 
-
 // ========================================
 // CHAT PUBLIC (sans login)
 // ========================================
@@ -992,24 +985,21 @@ app.post("/api/chat-public", async (req, res) => {
             [conversationId, "assistant", reply]
         );
 
-
-                // Notification Slack
+        // Notification Slack
         envoyerNotificationSlack(message, reply, sessionId).catch(err =>
             console.error("Erreur Slack :", err)
         );
-
-
 
         // Notification Discord
         envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
             console.error("Erreur Discord :", err)
         );
 
-
         // Envoyer notification email
         envoyerNotification(message, reply, sessionId).catch(err =>
             console.error("Erreur notif :", err)
         );
+
         res.json({ ok: true, reply, conversationId, messageId: insertedMsg.rows[0].id });
 
     } catch (error) {
@@ -1050,7 +1040,6 @@ app.get("/api/chat-public/historique/:sessionId", async (req, res) => {
         res.status(500).json({ ok: false, error: "Erreur serveur." });
     }
 });
-
 
 // ========================================
 // RÉACTIONS AUX MESSAGES
@@ -1103,7 +1092,6 @@ app.post("/api/react", async (req, res) => {
     }
 });
 
-
 // ========================================
 // COMPTER LES RÉACTIONS D'UN MESSAGE
 // ========================================
@@ -1142,7 +1130,6 @@ app.get("/api/reactions/:messageId", async (req, res) => {
     }
 });
 
-
 // ========================================
 // RECHERCHE RAG (base de connaissances)
 // ========================================
@@ -1156,8 +1143,6 @@ app.get("/api/rag-test", async (req, res) => {
         res.status(500).json({ ok: false, error: error.message });
     }
 });
-
-
 
 // ========================================
 // WEBHOOK WHATSAPP (Twilio)
@@ -1223,7 +1208,7 @@ app.post("/webhook-whatsapp", async (req, res) => {
             [conversationId, "assistant", reply]
         );
 
-               // Notifications Discord + Email
+        // Notifications Discord + Email
         envoyerNotificationDiscord(messageBody, reply, sessionIdWa).catch(() => {});
         envoyerNotification(messageBody, reply, sessionIdWa).catch(() => {});
 
@@ -1233,7 +1218,7 @@ app.post("/webhook-whatsapp", async (req, res) => {
             .replace(/</g, "&lt;")
             .replace(/>/g, "&gt;");
 
-           res.status(200).contentType("text/xml").send(
+        res.status(200).contentType("text/xml").send(
             `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${replySafe}</Message></Response>`
         );
     } catch (error) {
@@ -1241,7 +1226,6 @@ app.post("/webhook-whatsapp", async (req, res) => {
         res.status(200).send("<Response></Response>");
     }
 });
-
 
 // ========================================
 // PARTAGE DE CONVERSATION
@@ -1341,7 +1325,6 @@ app.get("/share/:sessionId", async (req, res) => {
     }
 });
 
-
 // ========================================
 // STRIPE — PAIEMENT & ABONNEMENT
 // ========================================
@@ -1397,7 +1380,7 @@ app.post("/webhook-stripe", async (req, res) => {
 
         console.log("💳 Webhook Stripe reçu :", event.type);
 
-       if (event.type === "checkout.session.completed") {
+        if (event.type === "checkout.session.completed") {
             const session = event.data.object;
             const userId = parseInt(session.metadata?.userId);
             const clientId = parseInt(session.metadata?.clientId);
@@ -1447,6 +1430,7 @@ app.post("/webhook-stripe", async (req, res) => {
         res.status(400).json({ error: error.message });
     }
 });
+
 // Page de succès après paiement
 app.get("/premium-success", async (req, res) => {
     const sessionId = req.query.session_id || "";
@@ -1478,7 +1462,6 @@ app.get("/premium-success", async (req, res) => {
 </body>
 </html>`);
 });
-
 
 // ========================================
 // PAGE CONTACT
@@ -1526,7 +1509,6 @@ app.post("/api/contact", async (req, res) => {
         res.status(500).json({ ok: false, error: "Impossible d'envoyer le message." });
     }
 });
-
 
 // ========================================
 // ADMIN CLIENTS (multi-tenant)
@@ -1643,7 +1625,6 @@ app.get("/api/client/:slug", async (req, res) => {
     }
 });
 
-
 // ========================================
 // PAGE CHAT CLIENT (multi-tenant)
 // ========================================
@@ -1718,11 +1699,11 @@ app.post("/api/chat-client", async (req, res) => {
         let contexteRAG = "";
         try {
             const ragResult = await pool.query(
-           `SELECT content FROM knowledge_base
-            WHERE client_id = $1
-            LIMIT 5`,
-            [clientId]
-        );
+                `SELECT content FROM knowledge_base
+                 WHERE client_id = $1
+                 LIMIT 5`,
+                [clientId]
+            );
 
             if (ragResult.rows.length > 0) {
                 contexteRAG = "\n\n📚 Base de connaissances :\n" +
@@ -1733,7 +1714,7 @@ app.post("/api/chat-client", async (req, res) => {
         }
 
         // Réponse IA
-        const systemPrompt = clientData.system_prompt||
+        const systemPrompt = clientData.system_prompt ||
             "Tu es un assistant IA amical et professionnel. Réponds en français de façon naturelle et concise.";
 
         const response = await client.responses.create({
@@ -1753,9 +1734,9 @@ app.post("/api/chat-client", async (req, res) => {
             [conversationId, "assistant", reply, clientId]
         );
 
-        // Notification
+        // Notification (CORRIGÉ : clientData au lieu de client)
         envoyerNotificationDiscord(message, reply, sessionId + " [" + clientData.name + "]").catch(() => {});
-        envoyerNotificationSlack(message, reply, sessionId + " [" + client.name + "]").catch(() => {});
+        envoyerNotificationSlack(message, reply, sessionId + " [" + clientData.name + "]").catch(() => {});
 
         res.json({ ok: true, reply, conversationId });
     } catch (error) {
@@ -1763,7 +1744,6 @@ app.post("/api/chat-client", async (req, res) => {
         res.status(500).json({ ok: false, error: "Erreur serveur." });
     }
 });
-
 
 // ========================================
 // SUPER ADMIN (multi-tenant)
@@ -1860,7 +1840,6 @@ app.put("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
     }
 });
 
-
 // ========================================
 // STRIPE PAR CLIENT (multi-tenant)
 // ========================================
@@ -1931,8 +1910,36 @@ app.get("/api/stripe/client-status/:slug", async (req, res) => {
     }
 });
 
+// ========================================
+// API MÉDICAMENTS (Open Data, sans clé)
+// ========================================
 
+app.get("/api/medicament/recherche", async (req, res) => {
+    try {
+        const recherche = req.query.q;
 
+        if (!recherche) {
+            return res.status(400).json({ ok: false, error: "Paramètre 'q' manquant." });
+        }
+
+        // API publique des médicaments (BDPM) — gratuite, sans clé
+        const apiUrl = `https://api-medicaments.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
+
+        const response = await fetch(apiUrl);
+
+        if (!response.ok) {
+            return res.status(response.status).json({ ok: false, error: "Erreur API médicament" });
+        }
+
+        const data = await response.json();
+
+        res.json({ ok: true, recherche: recherche, resultats: data });
+
+    } catch (error) {
+        console.error("❌ Erreur recherche médicament :", error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
 
 // ========================================
 // DÉMARRAGE DU SERVEUR
