@@ -1125,6 +1125,7 @@ app.post("/api/chat-public", async (req, res) => {
                 "1. Va droit au but (2-4 phrases sauf demande explicite).\n" +
                 "2. Si la réponse se trouve dans la 'Base de connaissances' ci-dessous, utilise-la en PRIORITÉ et cite l'info exacte.\n" +
                 "3. Si tu ne sais pas, dis-le honnêtement. N'invente JAMAIS.\n" +
+                "3bis. Si tu as reçu des 'PRATICIENS TROUVÉS' ci-dessous, LISTE-LES immédiatement (nom, spécialité, ville). Ne demande JAMAIS de précisions supplémentaires si tu as déjà des résultats.\n" +
                 "4. Ne prétends JAMAIS avoir fait une action que tu n'as pas faite.\n" +
                 "5. Ne répète pas la question avant de répondre.\n" +
                 "6. Utilise le tutoiement (tu), pas le vouvoiement.\n" +
