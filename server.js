@@ -1081,6 +1081,18 @@ app.post("/api/chat-public", async (req, res) => {
             contexteMedicament = formaterMedicamentsPourPrompt(meds);
         }
 
+                let contextePraticien = "";
+        if (estQuestionPraticien(message)) {
+            const m = message.toLowerCase();
+            const villes = ["paris", "marseille", "lyon", "toulouse", "nice", "nantes", "bordeaux", "lille", "rennes", "strasbourg"];
+            const ville = villes.find(v => m.includes(v)) || "";
+            const specialites = ["generaliste", "cardio", "dermato", "ophtalmo", "pediatre", "gyneco", "dentiste", "kine"];
+            const specialite = specialites.find(s => m.includes(s)) || "";
+            const textePraticiens = await chercherPraticien(specialite, ville);
+            contextePraticien = formaterPraticiensPourPrompt(textePraticiens);
+        }
+        
+
         const response = await client.responses.create({
             model: "gpt-5",
             instructions:
