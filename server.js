@@ -1909,7 +1909,6 @@ app.get("/api/stripe/client-status/:slug", async (req, res) => {
         res.status(500).json({ ok: false, error: error.message });
     }
 });
-
 // ========================================
 // API MÉDICAMENTS (Open Data, sans clé)
 // ========================================
@@ -1927,7 +1926,6 @@ app.get("/api/medicament/recherche", async (req, res) => {
             return res.status(400).json({ ok: false, error: "Paramètre 'q' manquant." });
         }
 
-        // On vérifie que fetch est bien disponible (Node 18+)
         if (typeof fetch !== "function") {
             console.error("❌ fetch n'est pas disponible dans cette version de Node.js.");
             return res.status(500).json({
@@ -1937,6 +1935,7 @@ app.get("/api/medicament/recherche", async (req, res) => {
             });
         }
 
+        // ✅ URL CORRIGÉE : medicaments-api (et pas api-medicaments)
         const apiUrl = `https://medicaments-api.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
 
         const response = await fetch(apiUrl, {
