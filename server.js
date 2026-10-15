@@ -1937,8 +1937,7 @@ app.get("/api/medicament/recherche", async (req, res) => {
             });
         }
 
-        const apiUrl = `https://api-medicaments.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
-        console.log("🔍 Appel API médicament :", apiUrl);
+        const apiUrl = `https://medicaments-api.giygas.dev/v1/medicaments?search=${encodeURIComponent(recherche)}`;
 
         const response = await fetch(apiUrl, {
             method: "GET",
