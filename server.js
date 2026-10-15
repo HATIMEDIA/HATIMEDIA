@@ -32,6 +32,67 @@ const {
     desactiverPremium
 } = require("./stripe");
 const app = express();
+// ========================================
+// HELPER — RECHERCHE MÉDICAMENT POUR L'AGENT
+// ========================================
+
+const MOTS_CLES_MEDICAMENT = [
+    "medicament", "doliprane", "paracetamol", "ibuprofene", "aspirine",
+    "efferalgan", "spasfon", "posologie", "dosage", "dose",
+    "contre-indication", "effet secondaire", "effets secondaires",
+    "ordonnance", "prescription", "comprime", "gelule", "sirop",
+    "antibiotique", "antidouleur", "anti-douleur", "anti-inflammatoire",
+    "medoc", "notice"
+];
+
+function estQuestionMedicament(message) {
+    if (!message || typeof message !== "string") return false;
+    const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return MOTS_CLES_MEDICAMENT.some(mot => m.includes(mot));
+}
+
+function extraireNomMedicament(message) {
+    if (!message) return "";
+    return message
+        .replace(/^(c'est quoi|c est quoi|quelle est|quel est|donne moi|donne-moi|parle moi de|parle-moi de|info sur|infos sur|recherche|cherche)\s+/i, "")
+        .replace(/\s*\?+$/g, "")
+        .trim()
+        .split(/\s+/).slice(0, 4).join(" ");
+}
+
+async function rechercherMedicament(query) {
+    if (!query) return null;
+    try {
+        const apiUrl = `https://medicaments-api.giygas.dev/v1/medicaments?search=${encodeURIComponent(query)}`;
+        const response = await fetch(apiUrl, {
+            method: "GET",
+            headers: { "Accept": "application/json", "User-Agent": "HATIMEDIA/1.0" }
+        });
+        if (!response.ok) return null;
+        return await response.json();
+    } catch (error) {
+        console.error("Erreur recherche médicament (helper) :", error.message);
+        return null;
+    }
+}
+
+function formaterMedicamentsPourPrompt(data) {
+    if (!data || !Array.isArray(data) || data.length === 0) return "";
+    const limite = data.slice(0, 5);
+    let texte = "\n\n💊 DONNÉES MÉDICAMENTS (source officielle BDPM) :\n";
+    for (const med of limite) {
+        texte += `- ${med.elementPharmaceutique || "Inconnu"}`;
+        if (med.formePharmaceutique) texte += ` (${med.formePharmaceutique})`;
+        if (med.voiesAdministration && med.voiesAdministration.length > 0) {
+            texte += ` — voie : ${med.voiesAdministration.join(", ")}`;
+        }
+        if (med.statusAutorisation) texte += ` — ${med.statusAutorisation}`;
+        if (med.cis) texte += ` [CIS: ${med.cis}]`;
+        texte += "\n";
+    }
+    texte += "\nUtilise ces données pour répondre. Si la posologie exacte ou les effets secondaires ne sont pas dans ces données, dis-le honnêtement et invite à consulter la notice ou un professionnel de santé. Ne JAMAIS inventer de posologie.\n";
+    return texte;
+}
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
 app.use(express.json({
