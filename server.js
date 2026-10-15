@@ -1011,6 +1011,13 @@ app.post("/api/chat-public", async (req, res) => {
 
         const contexteRAG = await getContexteRAG(message);
 
+        let contexteMedicament = "";
+        if (estQuestionMedicament(message)) {
+            const nomMed = extraireNomMedicament(message);
+            const meds = await rechercherMedicament(nomMed);
+            contexteMedicament = formaterMedicamentsPourPrompt(meds);
+        }
+
         const response = await client.responses.create({
             model: "gpt-5",
             instructions:
