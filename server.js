@@ -111,7 +111,6 @@ function estQuestionPraticien(message) {
     const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
     return MOTS_CLES_PRATICIEN.some(mot => m.includes(mot));
 }
-
 async function chercherPraticien(specialite, ville) {
     try {
         const argumentsMCP = { specialite: specialite || "" };
@@ -153,25 +152,6 @@ async function chercherPraticien(specialite, ville) {
                 arguments: argumentsMCP
             }
         };
-
-        const response = await fetch("https://monsuivimedical.fr/mcp", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) return null;
-        const data = await response.json();
-
-        if (data.result && data.result.content && data.result.content[0]) {
-            return data.result.content[0].text;
-        }
-        return null;
-    } catch (error) {
-        console.error("Erreur recherche praticien :", error.message);
-        return null;
-    }
-}
 
         const response = await fetch("https://monsuivimedical.fr/mcp", {
             method: "POST",
