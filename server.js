@@ -173,8 +173,8 @@ async function chercherPraticien(specialite, ville) {
         console.error("Erreur recherche praticien :", error.message);
         return null;
     }
-}
-        };
+  
+    };
 
         const response = await fetch("https://monsuivimedical.fr/mcp", {
             method: "POST",
