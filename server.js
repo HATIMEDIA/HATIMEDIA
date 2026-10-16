@@ -1132,7 +1132,7 @@ app.post("/api/chat-public", async (req, res) => {
 
                 let contextePraticien = "";
         if (estQuestionPraticien(message)) {
-            const m = message.toLowerCase();
+            const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const villes = ["paris", "marseille", "lyon", "toulouse", "nice", "nantes", "bordeaux", "lille", "rennes", "strasbourg"];
             const ville = villes.find(v => m.includes(v)) || "";
             const specialites = ["generaliste", "cardio", "dermato", "ophtalmo", "pediatre", "gyneco", "dentiste", "kine"];
