@@ -120,12 +120,10 @@ async function chercherPraticien(specialite, ville) {
             const v = ville.toLowerCase().trim();
             argumentsMCP.ville = v;
 
-            // Cas 1 : l'utilisateur tape directement un code postal (ex: 75015)
             if (/^\d{5}$/.test(v)) {
                 argumentsMCP.code_postal = v;
                 argumentsMCP.departement = v.substring(0, 2);
             } else {
-                // Cas 2 : l'utilisateur tape une ville → on déduit le département
                 const depts = {
                     "paris": "75", "marseille": "13", "lyon": "69",
                     "toulouse": "31", "nice": "06", "nantes": "44",
@@ -173,8 +171,7 @@ async function chercherPraticien(specialite, ville) {
         console.error("Erreur recherche praticien :", error.message);
         return null;
     }
-  
-    };
+}
 
         const response = await fetch("https://monsuivimedical.fr/mcp", {
             method: "POST",
