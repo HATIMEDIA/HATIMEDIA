@@ -114,17 +114,66 @@ function estQuestionPraticien(message) {
 
 async function chercherPraticien(specialite, ville) {
     try {
+        const argumentsMCP = { specialite: specialite || "" };
+
+        if (ville) {
+            const v = ville.toLowerCase().trim();
+            argumentsMCP.ville = v;
+
+            // Cas 1 : l'utilisateur tape directement un code postal (ex: 75015)
+            if (/^\d{5}$/.test(v)) {
+                argumentsMCP.code_postal = v;
+                argumentsMCP.departement = v.substring(0, 2);
+            } else {
+                // Cas 2 : l'utilisateur tape une ville → on déduit le département
+                const depts = {
+                    "paris": "75", "marseille": "13", "lyon": "69",
+                    "toulouse": "31", "nice": "06", "nantes": "44",
+                    "bordeaux": "33", "lille": "59", "rennes": "35",
+                    "strasbourg": "67", "montpellier": "34", "grenoble": "38",
+                    "dijon": "21", "angers": "49", "reims": "51", "le havre": "76",
+                    "saint-etienne": "42", "toulon": "83", "le mans": "72",
+                    "aix-en-provence": "13", "brest": "29", "limoges": "87",
+                    "tours": "37", "amiens": "80", "metz": "57", "besancon": "25",
+                    "perpignan": "66", "orleans": "45", "rouen": "76",
+                    "caen": "14", "nancy": "54", "clermont-ferrand": "63"
+                };
+                if (depts[v]) {
+                    argumentsMCP.departement = depts[v];
+                }
+            }
+        }
+
+        console.log("🔍 Recherche praticien - params envoyés :", JSON.stringify(argumentsMCP));
+
         const payload = {
             jsonrpc: "2.0",
             id: 1,
             method: "tools/call",
             params: {
                 name: "search_praticiens",
-                arguments: {
-                    specialite: specialite || "",
-                    ville: ville || ""
-                }
+                arguments: argumentsMCP
             }
+        };
+
+        const response = await fetch("https://monsuivimedical.fr/mcp", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+        });
+
+        if (!response.ok) return null;
+        const data = await response.json();
+
+        if (data.result && data.result.content && data.result.content[0]) {
+            return data.result.content[0].text;
+        }
+        return null;
+    } catch (error) {
+        console.error("Erreur recherche praticien :", error.message);
+        return null;
+    }
+}
         };
 
         const response = await fetch("https://monsuivimedical.fr/mcp", {
