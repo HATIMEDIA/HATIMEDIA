@@ -31,20 +31,15 @@ const {
     activerPremium,
     desactiverPremium
 } = require("./stripe");
+
 const app = express();
 
-} = require("./stripe");
-const app = express();
-
-// ⬇️ AJOUTEZ CES DEUX LIGNES ICI ⬇️
 const medical = require("./medical")(app);
 const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt } = medical;
-// ⬆️ FIN DE L'AJOUT ⬆️
 
 // ========================================
 // HELPER — RECHERCHE MÉDICAMENT POUR L'AGENT
 // ========================================
-
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
 app.use(express.json({
