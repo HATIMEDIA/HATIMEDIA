@@ -33,6 +33,18 @@ const {
 } = require("./stripe");
 const app = express();
 
+} = require("./stripe");
+const app = express();
+
+// ⬇️ AJOUTEZ CES DEUX LIGNES ICI ⬇️
+const medical = require("./medical")(app);
+const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt } = medical;
+// ⬆️ FIN DE L'AJOUT ⬆️
+
+// ========================================
+// HELPER — RECHERCHE MÉDICAMENT POUR L'AGENT
+// ========================================
+
 // ========================================
 // HELPER — RECHERCHE MÉDICAMENT POUR L'AGENT
 // ========================================
