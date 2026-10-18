@@ -179,14 +179,13 @@ module.exports = function(app, client) {
             return "Impossible de contacter Anteos pour le moment.";
         }
     }
-
-        // ===== ANALYSE D'ORDONNANCE =====
+// ===== ANALYSE D'ORDONNANCE =====
     async function analyserOrdonnance(texteOrdonnance) {
         if (!texteOrdonnance) return "Aucun texte fourni.";
         try {
             const response = await client.responses.create({
                 model: "gpt-5",
-                instructions: "Tu es un pharmacien. Extrais les noms des médicaments de ce texte d'ordonnance. Réponds UNIQUEMENT par un tableau JSON de chaînes de caractères. Exemple: [\"Doliprane 1000mg\", \"Amoxicilline\"]. N'inclus aucun autre texte.",
+                instructions: "Tu es un pharmacien. Extrais UNIQUEMENT le nom de base des médicaments (sans dosage, sans mg, sans forme). Réponds UNIQUEMENT par un tableau JSON. Exemple: [\"Doliprane\", \"Amoxicilline\"]. N'inclus aucun autre texte.",
                 input: texteOrdonnance
             });
 
