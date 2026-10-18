@@ -136,9 +136,53 @@ module.exports = function(app) {
         } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
     });
 
+    // ===== HELPERS ANTEO (PRISE DE RDV) =====
+    const MOTS_CLES_RDV = [
+        "rendez-vous", "rendez vous", "rdv", "réserver", "reserver", 
+        "consultation", "disponibilité", "disponibilité", "créneau", "creneau",
+        "prendre un rdv", "voir un medecin", "voir un médecin"
+    ];
+
+    function estQuestionRendezVous(message) {
+        if (!message || typeof message !== "string") return false;
+        const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return MOTS_CLES_RDV.some(mot => m.includes(mot));
+    }
+
+    async function appelerAnteos(toolName, args) {
+        const cle = process.env.ANTEOS_API_KEY;
+        if (!cle) {
+            console.error("❌ ANTEOS_API_KEY manquante (test en cours).");
+            return "La clé API Anteos n'est pas encore configurée. Je ne peux pas chercher de créneaux pour le moment.";
+        }
+
+        const payload = {
+            jsonrpc: "2.0", id: 1, method: "tools/call",
+            params: { name: toolName, arguments: args }
+        };
+
+        try {
+            const response = await fetch("https://anteoshealth.com/mcp", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${cle}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) return `Erreur Anteos (${response.status})`;
+            const data = await response.json();
+            return data.result?.content?.[0]?.text || "Aucune donnée reçue d'Anteos.";
+        } catch (error) {
+            console.error("❌ Anteos erreur :", error.message);
+            return "Impossible de contacter Anteos pour le moment.";
+        }
+    }
+    
     // ===== EXPORT POUR SERVER.JS =====
     return {
         estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt,
-        estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt
+        estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos
     };
 };
