@@ -969,7 +969,7 @@ app.post("/api/chat-public", async (req, res) => {
             contexteMedicament = formaterMedicamentsPourPrompt(meds);
         }
 
-                let contextePraticien = "";
+        let contextePraticien = "";
         if (estQuestionPraticien(message)) {
             const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const villes = ["paris", "marseille", "lyon", "toulouse", "nice", "nantes", "bordeaux", "lille", "rennes", "strasbourg"];
@@ -979,7 +979,16 @@ app.post("/api/chat-public", async (req, res) => {
             const textePraticiens = await chercherPraticien(specialite, ville);
             contextePraticien = formaterPraticiensPourPrompt(textePraticiens);
         }
-        
+        let contexteRendezVous = "";
+        if (estQuestionRendezVous(message)) {
+            contexteRendezVous = "\n\n🗓️ L'UTILISATEUR VEUT UN RENDEZ-VOUS.\n" +
+                "Avant de chercher un créneau, tu DOIS lui demander ces 4 informations s'il ne les a pas données :\n" +
+                "1. Nom et Prénom\n" +
+                "2. Date de naissance (JJ/MM/AAAA)\n" +
+                "3. Adresse email\n" +
+                "4. La spécialité exacte et la ville souhaitée.\n" +
+                "Une fois que tu as TOUT, dis-lui que tu vas chercher les créneaux (la connexion Anteos arrive bientôt).\n";
+        }
 
         const response = await client.responses.create({
             model: "gpt-5",
