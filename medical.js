@@ -1,4 +1,4 @@
-module.exports = function(app) {
+module.exports = function(app, client) {
     // ===== HELPERS MÉDICAMENT =====
     const MOTS_CLES_MEDICAMENT = [
         "medicament", "doliprane", "paracetamol", "ibuprofene", "aspirine",
