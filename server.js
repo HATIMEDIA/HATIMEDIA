@@ -33,12 +33,6 @@ const {
 } = require("./stripe");
 
 const app = express();
-const medical = require("./medical")(app);
-const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt } = medical;
-const { estQuestionRendezVous, appelerAnteos } = medical;
-// ========================================
-// HELPER — RECHERCHE MÉDICAMENT POUR L'AGENT
-// ========================================
 
 // ⚠️ Capture du RAW BODY pour la signature Meta
 app.use(express.json({
