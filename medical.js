@@ -179,6 +179,58 @@ module.exports = function(app) {
             return "Impossible de contacter Anteos pour le moment.";
         }
     }
+
+        // ===== ANALYSE D'ORDONNANCE =====
+    async function analyserOrdonnance(texteOrdonnance) {
+        if (!texteOrdonnance) return "Aucun texte fourni.";
+        try {
+            const response = await client.responses.create({
+                model: "gpt-5",
+                instructions: "Tu es un pharmacien. Extrais les noms des médicaments de ce texte d'ordonnance. Réponds UNIQUEMENT par un tableau JSON de chaînes de caractères. Exemple: [\"Doliprane 1000mg\", \"Amoxicilline\"]. N'inclus aucun autre texte.",
+                input: texteOrdonnance
+            });
+
+            let medicaments = [];
+            try {
+                medicaments = JSON.parse(response.output_text);
+            } catch (e) {
+                return "❌ Impossible de lire l'ordonnance correctement.";
+            }
+
+            if (!Array.isArray(medicaments) || medicaments.length === 0) {
+                return "📋 Aucun médicament trouvé dans l'ordonnance.";
+            }
+
+            let resultatFinal = "📋 **Analyse de votre ordonnance :**\n\n";
+            for (const med of medicaments.slice(0, 5)) {
+                const data = await rechercherMedicament(med);
+                resultatFinal += `💊 **${med}**\n`;
+                if (data && Array.isArray(data) && data.length > 0) {
+                    resultatFinal += formaterMedicamentsPourPrompt(data) + "\n";
+                } else {
+                    resultatFinal += "- Information non trouvée dans la base officielle.\n\n";
+                }
+            }
+            return resultatFinal;
+
+        } catch (error) {
+            console.error("Erreur analyse ordonnance :", error);
+            return "❌ Erreur lors de l'analyse de l'ordonnance.";
+        }
+    }
+
+    // Route de test pour l'ordonnance
+    app.post("/api/ordonnance/analyser", async (req, res) => {
+        try {
+            const texte = req.body.texte;
+            if (!texte) return res.status(400).json({ ok: false, error: "Texte manquant" });
+            const resultat = await analyserOrdonnance(texte);
+            res.json({ ok: true, analyse: resultat });
+        } catch (e) {
+            res.status(500).json({ ok: false, error: e.message });
+        }
+    });
+
     
     // ===== EXPORT POUR SERVER.JS =====
     return {
