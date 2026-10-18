@@ -50,10 +50,8 @@ const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const NEON_URL = "postgresql://neondb_owner:npg_Mgj98WxFaJUY@ep-rapid-silence-b2r6id56-pooler.c-6.eu-central-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require";
 const pool = new Pool({ connectionString: NEON_URL, ssl: { rejectUnauthorized: false } });
 
-// ⬇️ LE MODULE MÉDICAL SE BRANCHE ICI (APRÈS APP, CLIENT ET POOL) ⬇️
 const medical = require("./medical")(app, client);
 const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos, analyserOrdonnance } = medical;
-// ⚠️ Capture du RAW BODY pour la signature Meta
 app.use(express.json({
     verify: (req, res, buf) => {
         req.rawBody = buf;
