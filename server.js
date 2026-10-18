@@ -24,6 +24,10 @@ const { envoyerNotificationDiscord } = require("./discord");
 const { envoyerNotificationSlack } = require("./slack");
 const { envoyerMessageWhatsApp } = require("./whatsapp");
 const { rechercherDansBase, getContexteRAG } = require("./rag");
+
+const medical = require("./medical")(app, client);
+const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos, analyserOrdonnance } = medical;
+
 const {
     stripe,
     getAbonnement,
