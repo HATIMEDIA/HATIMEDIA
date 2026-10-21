@@ -51,8 +51,7 @@ const NEON_URL = "postgresql://neondb_owner:npg_Mgj98WxFaJUY@ep-rapid-silence-b2
 const pool = new Pool({ connectionString: NEON_URL, ssl: { rejectUnauthorized: false } });
 
 const medical = require("./medical")(app, client);
-const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos, analyserOrdonnance } = medical;
-
+const { estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt, estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos, analyserOrdonnance, estQuestionOrdonnance } = medical;
 // Page de chat publique (sans login)
 app.get("/chat", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "chat.html"));
