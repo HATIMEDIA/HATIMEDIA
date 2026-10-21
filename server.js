@@ -976,6 +976,13 @@ app.post("/api/chat-public", async (req, res) => {
             const textePraticiens = await chercherPraticien(specialite, ville);
             contextePraticien = formaterPraticiensPourPrompt(textePraticiens);
         }
+
+                let contexteOrdonnance = "";
+        if (estQuestionOrdonnance(message)) {
+            const analyse = await analyserOrdonnance(message);
+            contexteOrdonnance = "\n\n📋 ANALYSE D'ORDONNANCE :\n" + analyse + "\n";
+        }
+        
         let contexteRendezVous = "";
         if (estQuestionRendezVous(message)) {
             contexteRendezVous = "\n\n🗓️ L'UTILISATEUR VEUT UN RENDEZ-VOUS.\n" +
