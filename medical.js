@@ -239,9 +239,10 @@ module.exports = function(app, client) {
 
 
     
-    // ===== EXPORT POUR SERVER.JS =====
+      // ===== EXPORT POUR SERVER.JS =====
     return {
         estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt,
-        estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos
+        estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos,
+        analyserOrdonnance, estQuestionOrdonnance
     };
 };
