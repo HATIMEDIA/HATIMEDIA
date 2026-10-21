@@ -231,11 +231,11 @@ module.exports = function(app, client) {
     });
 
     // ===== DÉTECTION D'ORDONNANCE DANS LE CHAT =====
-    function estQuestionOrdonnance(message) {
+       function estQuestionOrdonnance(message) {
         if (!message || typeof message !== "string") return false;
         const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         return m.includes("ordonnance") || m.includes("prescription") || m.includes("traitement");
-    }   
+    }
 
 
     
