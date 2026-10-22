@@ -1038,11 +1038,7 @@ app.post("/api/chat-public", async (req, res) => {
             console.error("Erreur Slack :", err)
         );
 
-        // ⬇️ AJOUTEZ CES 3 LIGNES ICI ⬇️
-        envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
-            console.error("Erreur Discord :", err)
-        );
-        // ⬆️ FIN DE L'AJOUT ⬆️
+               // Notification Discord
         envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
             console.error("Erreur Discord :", err)
         );
