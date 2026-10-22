@@ -1043,6 +1043,15 @@ app.post("/api/chat-public", async (req, res) => {
             console.error("Erreur Discord :", err)
         );
 
+                // Notification Google Sheets
+        if (process.env.GOOGLE_SHEET_WEBHOOK) {
+            fetch(process.env.GOOGLE_SHEET_WEBHOOK, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ message: message, sessionId: sessionId })
+            }).catch(err => console.error("Erreur Google Sheets :", err));
+        }
+
             const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
         envoyerNotification(message, reply, sessionId, typeNotif).catch(err =>
             console.error("Erreur notif :", err)
