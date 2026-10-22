@@ -1027,7 +1027,7 @@ app.post("/api/chat-public", async (req, res) => {
         });
         const reply = response.output_text;
 
-        const insertedMsg = await pool.query(
+           const insertedMsg = await pool.query(
             `INSERT INTO messages (conversation_id, role, content)
              VALUES ($1, $2, $3)
              RETURNING id`,
@@ -1038,6 +1038,11 @@ app.post("/api/chat-public", async (req, res) => {
             console.error("Erreur Slack :", err)
         );
 
+        // ⬇️ AJOUTEZ CES 3 LIGNES ICI ⬇️
+        envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
+            console.error("Erreur Discord :", err)
+        );
+        // ⬆️ FIN DE L'AJOUT ⬆️
         envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
             console.error("Erreur Discord :", err)
         );
