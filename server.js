@@ -1042,7 +1042,8 @@ app.post("/api/chat-public", async (req, res) => {
             console.error("Erreur Discord :", err)
         );
 
-        envoyerNotification(message, reply, sessionId).catch(err =>
+            const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
+        envoyerNotification(message, reply, sessionId, typeNotif).catch(err =>
             console.error("Erreur notif :", err)
         );
 
