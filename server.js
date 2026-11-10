@@ -1013,6 +1013,7 @@ app.post("/api/chat-public", async (req, res) => {
                 "6. Ne prétends JAMAIS avoir fait une action que tu n'as pas faite.\n" +
                 (contexteRAG ? "\n\n📚 BASE DE CONNAISSANCES :\n" + contexteRAG : "") +
                 contexteMedicament +
+                contexteTriage +
                 contextePraticien +
                 contexteRendezVous +
                 contexteOrdonnance +
