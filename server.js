@@ -994,6 +994,23 @@ app.post("/api/chat-public", async (req, res) => {
                 "Une fois que tu as TOUT, dis-lui que tu vas chercher les créneaux (la connexion Anteos arrive bientôt).\n";
         }
 
+        // --- TRIAGE MÉDICAL ---
+        let contexteTriage = "";
+        const triage = evaluerUrgence(message);
+        
+        if (triage.urgence) {
+            contexteTriage = "\n\n🚨 ALERTE ROUGE : L'utilisateur décrit des symptômes potentiellement vitaux. " +
+                             "Tu DOIS lui dire d'appeler immédiatement le 15 (SAMU) ou le 112. " +
+                             "Ne pose pas de diagnostic, dis-lui que c'est une urgence.\n";
+        } else if (triage.symptome) {
+            contexteTriage = "\n\n🩺 ORIENTATION : L'utilisateur décrit des symptômes (pas d'urgence vitale détectée). " +
+                             "Rappelle que tu n'es pas médecin, donne des conseils de bon sens, " +
+                             "et propose-lui de chercher un médecin généraliste disponible près de chez lui si besoin.\n";
+        }
+
+
+        
+
               const response = await client.responses.create({
             model: "gpt-5",
             instructions:
