@@ -239,10 +239,38 @@ module.exports = function(app, client) {
 
 
     
+    // ===== TRIAGE ET ORIENTATION (Phase 1) =====
+    const SIGNES_VITAUX_GRAVES = [
+        "douleur thoracique", "douleur poitrine", "bras gauche", "infarctus",
+        "difficulté à respirer", "difficulte a respirer", "étouffe", "etouffe",
+        "paralysie", "parle plus", "bouche tordue", "avc",
+        "saigne beaucoup", "hémorragie", "hemorragie", "sang abondant",
+        "inconscient", "évanoui", "evanoui", "convulsion",
+        "suicide", "suicidaire"
+    ];
+
+    const MOTS_SYMPTOMES = [
+        "mal", "douleur", "fievre", "fièvre", "tousse", "toux", "nausee", "nausée", 
+        "vomi", "diarrhee", "diarrhée", "bobo", "blessé", "blesse", "fatigue", 
+        "migraine", "ventre", "tete", "tête", "gorge", "nez"
+    ];
+
+    function evaluerUrgence(message) {
+        if (!message || typeof message !== "string") return { urgence: false, symptome: false };
+        const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        const estUrgent = SIGNES_VITAUX_GRAVES.some(signe => m.includes(signe));
+        const aDesSymptomes = MOTS_SYMPTOMES.some(mot => m.includes(mot));
+
+        return { urgence: estUrgent, symptome: aDesSymptomes };
+    }    
+    
       // ===== EXPORT POUR SERVER.JS =====
-    return {
+        
+        return {
         estQuestionMedicament, extraireNomMedicament, rechercherMedicament, formaterMedicamentsPourPrompt,
         estQuestionPraticien, chercherPraticien, formaterPraticiensPourPrompt, estQuestionRendezVous, appelerAnteos,
-        analyserOrdonnance, estQuestionOrdonnance
+        analyserOrdonnance, estQuestionOrdonnance,
+        evaluerUrgence
     };
 };
