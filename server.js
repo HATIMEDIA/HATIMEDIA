@@ -1238,6 +1238,7 @@ app.get("/webhook-whatsapp", (req, res) => {
 // 2. Route POST pour recevoir et répondre aux messages
 app.post("/webhook-whatsapp", async (req, res) => {
     try {
+        console.log("📥 Meta a envoyé une requête au webhook !", JSON.stringify(req.body));
         res.sendStatus(200); // Répondre à Meta immédiatement pour éviter les timeouts
 
         if (req.body.object) {
