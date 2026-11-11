@@ -1307,11 +1307,11 @@ app.post("/webhook-whatsapp", async (req, res) => {
                 envoyerNotificationDiscord(msg_body, reply, sessionIdWa).catch(() => {});
                 envoyerNotification(msg_body, reply, sessionIdWa).catch(() => {});
 
-                // Envoi de la réponse via l'API Meta
+                // Envoi de la réponse via l'API Meta (AVEC LE RADAR)
                 const token = process.env.META_WHATSAPP_TOKEN;
                 const url = `https://graph.facebook.com/v18.0/${phone_number_id}/messages`;
 
-                await fetch(url, {
+                const waResponse = await fetch(url, {
                     method: "POST",
                     headers: {
                         "Authorization": `Bearer ${token}`,
@@ -1323,6 +1323,13 @@ app.post("/webhook-whatsapp", async (req, res) => {
                         text: { body: reply }
                     })
                 });
+                
+                const waData = await waResponse.json();
+                console.log("🚀 Réponse de WhatsApp API :", JSON.stringify(waData));
+
+                if (!waResponse.ok) {
+                    console.error("❌ Erreur d'envoi WhatsApp :", JSON.stringify(waData));
+                }
             }
         }
     } catch (error) {
