@@ -1239,7 +1239,7 @@ app.get("/webhook-whatsapp", (req, res) => {
 app.post("/webhook-whatsapp", async (req, res) => {
     try {
         console.log("📥 Meta a envoyé une requête au webhook !", JSON.stringify(req.body));
-        res.sendStatus(200); // Répondre à Meta immédiatement pour éviter les timeouts
+        res.sendStatus(200); // Répondre à Meta immédiatement
 
         if (req.body.object) {
             if (
@@ -1308,27 +1308,31 @@ app.post("/webhook-whatsapp", async (req, res) => {
                 envoyerNotification(msg_body, reply, sessionIdWa).catch(() => {});
 
                 // Envoi de la réponse via l'API Meta (AVEC LE RADAR)
-                const token = process.env.META_WHATSAPP_TOKEN;
-                const url = `https://graph.facebook.com/v18.0/${phone_number_id}/messages`;
+                try {
+                    const token = process.env.META_WHATSAPP_TOKEN;
+                    const url = `https://graph.facebook.com/v18.0/${phone_number_id}/messages`;
 
-                const waResponse = await fetch(url, {
-                    method: "POST",
-                    headers: {
-                        "Authorization": `Bearer ${token}`,
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        messaging_product: "whatsapp",
-                        to: from,
-                        text: { body: reply }
-                    })
-                });
-                
-                const waData = await waResponse.json();
-                console.log("🚀 Réponse de WhatsApp API :", JSON.stringify(waData));
+                    const waResponse = await fetch(url, {
+                        method: "POST",
+                        headers: {
+                            "Authorization": `Bearer ${token}`,
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            messaging_product: "whatsapp",
+                            to: from,
+                            text: { body: reply }
+                        })
+                    });
+                    
+                    const waData = await waResponse.json();
+                    console.log("🚀 Réponse de WhatsApp API :", JSON.stringify(waData));
 
-                if (!waResponse.ok) {
-                    console.error("❌ Erreur d'envoi WhatsApp :", JSON.stringify(waData));
+                    if (!waResponse.ok) {
+                        console.error("❌ Erreur d'envoi WhatsApp :", JSON.stringify(waData));
+                    }
+                } catch (waError) {
+                    console.error("❌ Exception lors de l'envoi WhatsApp :", waError.message);
                 }
             }
         }
