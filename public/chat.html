@@ -931,27 +931,63 @@ document.getElementById('imageUpload').addEventListener('change', async (e) => {
             chatBox.innerHTML += `<div class="message user"><img src="${base64Image}" style="max-width: 200px; border-radius: 10px;"></div>`;
         }
 
-        // Envoyer l'image à l'IA
+      // Envoyer l'image à l'IA
+    try {
+        const response = await fetch('/api/chat-vision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: base64Image, message: "Analyse cette image médicale." })
+        });
+        const data = await response.json();
+        
+        if (chatBox) {
+            chatBox.innerHTML += `<div class="message assistant">${data.reply}</div>`;
+        }
+    } catch (error) {
+        console.error("Erreur d'analyse d'image", error);
+    }
+    };
+    reader.readAsDataURL(file);
+    });
+
+    // ==========================================
+    // GESTION DU MESSAGE TEXTE (La fonction qui manquait)
+    // ==========================================
+    async function envoyerMessage() {
+        // ⚠️ Vérifiez que l'ID ici correspond à votre case de texte (ex: 'message-input' ou 'user-input')
+        const input = document.getElementById('message-input'); 
+        if (!input) return;
+
+        const message = input.value.trim();
+        if (!message) return;
+
+        const chatBox = document.getElementById('chat-box');
+        
+        // Afficher le message de l'utilisateur
+        chatBox.innerHTML += `<div class="message user">${message}</div>`;
+        input.value = "";
+
         try {
-            const response = await fetch('/api/chat-vision', {
+            const response = await fetch('/api/chat-public', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: base64Image, message: "Analyse cette image médicale." })
+                body: JSON.stringify({ 
+                    message: message, 
+                    sessionId: sessionStorage.getItem('sessionId') || 'session_' + Math.random()
+                })
             });
+            
             const data = await response.json();
             
             // Afficher la réponse de l'IA
-            if (chatBox) {
-                chatBox.innerHTML += `<div class="message assistant">${data.reply}</div>`;
-            }
+            chatBox.innerHTML += `<div class="message assistant">${data.reply}</div>`;
+            chatBox.scrollTop = chatBox.scrollHeight;
+            
         } catch (error) {
-            console.error("Erreur d'analyse d'image", error);
+            console.error("Erreur d'envoi", error);
+            chatBox.innerHTML += `<div class="message assistant">Erreur de connexion.</div>`;
         }
-    };
-    reader.readAsDataURL(file);
-});
-</script>
-
+    }
 </script>
 
 </body>
