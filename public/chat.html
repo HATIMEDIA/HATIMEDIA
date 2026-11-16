@@ -907,11 +907,9 @@ input.addEventListener("keydown", function (e) {
     if (btn) btn.textContent = theme === "dark" ? "☀️" : "🌙";
 })();
 
-verifierHistorique();
-input.focus();
-
-verifierPremium();
-<script>
+// ==========================================
+// NOUVEAU : GESTION DU TROMBONE (UPLOAD IMAGE)
+// ==========================================
 document.getElementById('uploadBtn').addEventListener('click', () => {
     document.getElementById('imageUpload').click();
 });
@@ -920,74 +918,39 @@ document.getElementById('imageUpload').addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
-    // Afficher l'image dans le chat
     const reader = new FileReader();
     reader.onload = async (event) => {
         const base64Image = event.target.result;
         
-        // Ajouter la bulle de l'utilisateur avec l'image
-        const chatBox = document.getElementById('chat-box'); // Vérifiez l'ID de votre zone de chat
-        if (chatBox) {
-            chatBox.innerHTML += `<div class="message user"><img src="${base64Image}" style="max-width: 200px; border-radius: 10px;"></div>`;
+        // On utilise la variable "chat" qui est déjà définie tout en haut !
+        if (chat) {
+            chat.innerHTML += `<div class="message user"><img src="${base64Image}" style="max-width: 200px; border-radius: 10px;"></div>`;
+            chat.scrollTop = chat.scrollHeight;
         }
-
-      // Envoyer l'image à l'IA
-    try {
-        const response = await fetch('/api/chat-vision', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ image: base64Image, message: "Analyse cette image médicale." })
-        });
-        const data = await response.json();
-        
-        if (chatBox) {
-            chatBox.innerHTML += `<div class="message assistant">${data.reply}</div>`;
-        }
-    } catch (error) {
-        console.error("Erreur d'analyse d'image", error);
-    }
-    };
-    reader.readAsDataURL(file);
-    });
-
-    // ==========================================
-    // GESTION DU MESSAGE TEXTE (La fonction qui manquait)
-    // ==========================================
-    async function envoyerMessage() {
-        // ⚠️ Vérifiez que l'ID ici correspond à votre case de texte (ex: 'message-input' ou 'user-input')
-        const input = document.getElementById('message-input'); 
-        if (!input) return;
-
-        const message = input.value.trim();
-        if (!message) return;
-
-        const chatBox = document.getElementById('chat-box');
-        
-        // Afficher le message de l'utilisateur
-        chatBox.innerHTML += `<div class="message user">${message}</div>`;
-        input.value = "";
 
         try {
-            const response = await fetch('/api/chat-public', {
+            const response = await fetch('/api/chat-vision', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    message: message, 
-                    sessionId: sessionStorage.getItem('sessionId') || 'session_' + Math.random()
-                })
+                body: JSON.stringify({ image: base64Image, message: "Analyse cette image médicale." })
             });
-            
             const data = await response.json();
             
-            // Afficher la réponse de l'IA
-            chatBox.innerHTML += `<div class="message assistant">${data.reply}</div>`;
-            chatBox.scrollTop = chatBox.scrollHeight;
-            
+            if (chat) {
+                chat.innerHTML += `<div class="message assistant">${data.reply}</div>`;
+                chat.scrollTop = chat.scrollHeight;
+            }
         } catch (error) {
-            console.error("Erreur d'envoi", error);
-            chatBox.innerHTML += `<div class="message assistant">Erreur de connexion.</div>`;
+            console.error("Erreur d'analyse d'image", error);
         }
-    }
+    };
+    reader.readAsDataURL(file);
+});
+
+// Lancement de l'application
+verifierHistorique();
+input.focus();
+verifierPremium();
 </script>
 
 </body>
