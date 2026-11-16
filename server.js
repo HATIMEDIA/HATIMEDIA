@@ -2084,6 +2084,43 @@ app.get("/api/praticien/recherche", async (req, res) => {
     }
 });
 
+
+// ========================================
+// ANALYSE D'IMAGE (VISION IA)
+// ========================================
+
+app.post("/api/chat-vision", async (req, res) => {
+    try {
+        const { image, message } = req.body;
+        if (!image) return res.status(400).json({ error: "Aucune image reçue." });
+
+        const response = await client.chat.completions.create({
+            model: "gpt-4o", // Modèle avec vision
+            messages: [
+                {
+                    role: "system",
+                    content: "Tu es HATIMEDIA, un assistant médical. Analyse l'image fournie (ordonnance, boîte de médicament, etc.). Extrais les informations utiles. Ne pose pas de diagnostic, sois prudent et renvoie vers un médecin si nécessaire."
+                },
+                {
+                    role: "user",
+                    content: [
+                        { type: "text", text: message || "Analyse cette image." },
+                        { type: "image_url", image_url: { url: image } }
+                    ]
+                }
+            ],
+            max_tokens: 500
+        });
+
+        const reply = response.choices[0].message.content;
+
+        res.json({ ok: true, reply });
+    } catch (error) {
+        console.error("❌ Erreur Vision IA :", error);
+        res.status(500).json({ ok: false, error: "Impossible d'analyser l'image." });
+    }
+});
+
 // ========================================
 // DÉMARRAGE DU SERVEUR
 // ========================================
