@@ -462,6 +462,9 @@
 
     <div class="input-area">
         <input id="message" type="text" placeholder="Votre message..." autocomplete="off">
+        <!-- Bouton d'upload d'image -->
+        <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+        <button id="uploadBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 10px;">📎</button>
         <button class="send" id="sendBtn" onclick="envoyerMessage()">➤</button>
     </div>
 
@@ -906,7 +909,49 @@ input.addEventListener("keydown", function (e) {
 
 verifierHistorique();
 input.focus();
+
 verifierPremium();
+<script>
+document.getElementById('uploadBtn').addEventListener('click', () => {
+    document.getElementById('imageUpload').click();
+});
+
+document.getElementById('imageUpload').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Afficher l'image dans le chat
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+        const base64Image = event.target.result;
+        
+        // Ajouter la bulle de l'utilisateur avec l'image
+        const chatBox = document.getElementById('chat-box'); // Vérifiez l'ID de votre zone de chat
+        if (chatBox) {
+            chatBox.innerHTML += `<div class="message user"><img src="${base64Image}" style="max-width: 200px; border-radius: 10px;"></div>`;
+        }
+
+        // Envoyer l'image à l'IA
+        try {
+            const response = await fetch('/api/chat-vision', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: base64Image, message: "Analyse cette image médicale." })
+            });
+            const data = await response.json();
+            
+            // Afficher la réponse de l'IA
+            if (chatBox) {
+                chatBox.innerHTML += `<div class="message assistant">${data.reply}</div>`;
+            }
+        } catch (error) {
+            console.error("Erreur d'analyse d'image", error);
+        }
+    };
+    reader.readAsDataURL(file);
+});
+</script>
+
 </script>
 
 </body>
