@@ -969,18 +969,17 @@ window.initialiserCarte = function(ville) {
     chat.appendChild(mapContainer);
     chat.scrollTop = chat.scrollHeight;
 
-    // On attend 100ms que le chat finisse de s'afficher avant de dessiner
     setTimeout(function() {
         var map = L.map(mapContainer.id, {
-            dragging: true,        // Autorise le déplacement à la souris
-            touchZoom: true,       // Autorise le zoom tactile
-            scrollWheelZoom: true, // Autorise le zoom à la molette
+            dragging: true,
+            touchZoom: true,
+            scrollWheelZoom: true,
             doubleClickZoom: true
         }).setView([46.603354, 1.888334], 6);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-        // Ajout de la barre de recherche
+        // Ajout de la barre de recherche (la loupe)
         L.Control.geocoder({
             defaultMarkGeocode: false,
             placeholder: "Chercher une adresse...",
@@ -994,8 +993,7 @@ window.initialiserCarte = function(ville) {
                  bbox.getSouthWest()
             ]);
             map.fitBounds(poly.getBounds());
-            L.marker(e.geocode.center).addTo(map)
-                .bindPopup(e.geocode.name).openPopup();
+            L.marker(e.geocode.center).addTo(map).bindPopup(e.geocode.name).openPopup();
         }).addTo(map);
 
         var villes = { 
@@ -1023,20 +1021,9 @@ window.initialiserCarte = function(ville) {
     }, 100);
 };
 
-        var villes = { "paris": [48.8566, 2.3522], "toulouse": [43.6047, 1.4442], "marseille": [43.2965, 5.3698], "lyon": [45.7640, 4.8357], "bordeaux": [44.8378, -0.5792], "lille": [50.6292, 3.0573], "nantes": [47.2184, -1.5536], "nice": [43.7102, 7.2620] };
-        var coord = villes[ville.toLowerCase()];
-        if (coord) {
-            map.setView(coord, 12);
-            L.marker(coord).addTo(map).bindPopup('<b>Recherche à ' + ville + '</b>').openPopup();
-        }
-
-        // Ce petit correctif force la carte à bien se redessiner
-        setTimeout(function() {
-            map.invalidateSize();
-        }, 200);
-
-    }, 100);
-};
+// --- ON REMET LE LANCEMENT DE L'APPLICATION ICI ---
+verifierHistorique();
+input.focus();
 verifierPremium();
 </script>
 
