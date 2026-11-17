@@ -2138,6 +2138,40 @@ app.post("/api/chat-vision", async (req, res) => {
 });
 
 // ========================================
+// DASHBOARD MÉDECIN (Pré-consultations)
+// ========================================
+
+app.get("/dashboard", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "dashboard.html"));
+});
+
+app.get("/api/dashboard/pre-consultations", async (req, res) => {
+    try {
+        // On cherche tous les messages de l'IA qui contiennent le fameux compte-rendu
+        const result = await pool.query(
+            `SELECT m.content, m.created_at, c.user_id 
+             FROM messages m
+             JOIN conversations c ON m.conversation_id = c.id
+             WHERE m.role = 'assistant' AND m.content LIKE '%Compte-rendu de pré-consultation%'
+             ORDER BY m.created_at DESC
+             LIMIT 50`
+        );
+
+        const bilans = result.rows.map(row => ({
+            contenu: row.content,
+            date: row.created_at,
+            sessionId: "sess_" + row.user_id // On utilise l'ID utilisateur comme identifiant de session
+        }));
+
+        res.json({ ok: true, bilans });
+    } catch (error) {
+        console.error("❌ Erreur dashboard :", error);
+        res.status(500).json({ ok: false, error: "Impossible de charger le tableau de bord." });
+    }
+});
+
+
+// ========================================
 // DÉMARRAGE DU SERVEUR
 // ========================================
 
