@@ -1083,12 +1083,31 @@ app.post("/api/chat-public", async (req, res) => {
             }).catch(err => console.error("Erreur Google Sheets :", err));
         }
 
-            const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
+                    const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
         envoyerNotification(message, reply, sessionId, typeNotif).catch(err =>
             console.error("Erreur notif :", err)
         );
 
-        res.json({ ok: true, reply, conversationId, messageId: insertedMsg.rows[0].id });
+        // --- DÉTECTION POUR LA CARTE INTERACTIVE ---
+        let afficherCarte = false;
+        let villeCarte = "";
+        
+        if (estQuestionPraticien(message)) {
+            const villesConnues = ["paris", "toulouse", "marseille", "lyon", "bordeaux", "lille", "nantes", "nice"];
+            const v = villesConnues.find(v => message.toLowerCase().includes(v));
+            if (v) {
+                afficherCarte = true;
+                villeCarte = v;
+            }
+        }
+
+        res.json({ 
+            ok: true, 
+            reply, 
+            conversationId, 
+            messageId: insertedMsg.rows[0].id,
+            carte: afficherCarte ? villeCarte : null
+        });
 
     } catch (error) {
         console.error("❌ Erreur chat public :", error);
