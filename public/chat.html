@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HATIMEDIA — Discuter</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    
     <!-- Google tag (gtag.js) -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-MQ8Z1YX16C"></script>
     <script>
@@ -861,6 +865,13 @@ async function envoyerMessage() {
         thinking.remove();
         if (data.reply) {
             ajouterMessage(data.reply, "assistant", true, data.messageId);
+            
+            // --- AJOUT POUR LA CARTE ---
+            if (data.carte) {
+                window.initialiserCarte(data.carte);
+            }
+            // ---------------------------
+            
             if (data.conversationId) conversationId = data.conversationId;
             if (voixActive) {
                 faireParler(data.reply, function () {
