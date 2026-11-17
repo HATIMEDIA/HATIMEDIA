@@ -844,7 +844,6 @@ async function envoyerMessage() {
     ajouterMessage(texte, "user");
     input.value = "";
 
-    // Indicateur de frappe avec 3 points
     var thinking = document.createElement("div");
     thinking.className = "thinking";
     thinking.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
@@ -863,6 +862,7 @@ async function envoyerMessage() {
         });
         var data = await r.json();
         thinking.remove();
+        
         if (data.reply) {
             ajouterMessage(data.reply, "assistant", true, data.messageId);
             
@@ -894,7 +894,6 @@ async function envoyerMessage() {
     sendBtn.disabled = false;
     input.focus();
 }
-
 function nouvelleConversation() {
     if (!confirm("Démarrer une nouvelle conversation ?")) return;
     modeVocal = false;
