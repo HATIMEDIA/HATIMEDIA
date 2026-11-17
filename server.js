@@ -1028,6 +1028,22 @@ app.post("/api/chat-public", async (req, res) => {
                 "4. Si tu as des données officielles (médicaments, praticiens), utilise-les en PRIORITÉ.\n" +
                 "5. Si tu ne sais pas, dis-le honnêtement. N'invente JAMAIS.\n" +
                 "6. Ne prétends JAMAIS avoir fait une action que tu n'as pas faite.\n" +
+                "\n\nPROTOCOLE DE PRÉ-CONSULTATION :\n" +
+                "1. Si l'utilisateur demande un bilan de santé, une pré-consultation, ou décrit des symptômes complexes, propose-lui de faire un 'Bilan de Pré-Consultation'.\n" +
+                "2. S'il accepte, tu DOIS lui poser les questions UNE PAR UNE, dans cet ordre :\n" +
+                "   - Quel est ton âge et ton sexe ?\n" +
+                "   - Quel est le symptôme principal et depuis combien de temps ?\n" +
+                "   - As-tu des antécédents médicaux ou des allergies connues ?\n" +
+                "   - Quels médicaments prends-tu actuellement (même sans ordonnance) ?\n" +
+                "3. Une fois que tu as TOUTES ces informations, génère un 'COMPTE-RENDU DE PRÉ-CONSULTATION' avec ce format exact :\n" +
+                "   📋 **Compte-rendu de pré-consultation**\n" +
+                "   - **Patient** : [Âge] ans, [Sexe]\n" +
+                "   - **Motif** : [Symptôme et durée]\n" +
+                "   - **Antécédents / Allergies** : [Infos]\n" +
+                "   - **Traitements en cours** : [Infos]\n" +
+                "   - **Synthèse pour le médecin** : [Résumé clair de 2-3 phrases]\n" +
+                "   - **Conseil** : Ceci est une information à titre indicatif. Consultez un médecin.\n" +
+                "4. Ne pose pas de diagnostic. Ne prescris rien. Ton rôle est uniquement de récolter les informations.\n" +
                 (contexteRAG ? "\n\n📚 BASE DE CONNAISSANCES :\n" + contexteRAG : "") +
                 contexteMedicament +
                 contexteTriage +
