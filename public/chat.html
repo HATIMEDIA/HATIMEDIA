@@ -961,6 +961,27 @@ document.getElementById('imageUpload').addEventListener('change', async (e) => {
 // Lancement de l'application
 verifierHistorique();
 input.focus();
+window.initialiserCarte = function(ville) {
+    var mapContainer = document.createElement('div');
+    mapContainer.id = 'map-' + Date.now();
+    mapContainer.style.height = '250px';
+    mapContainer.style.width = '100%';
+    mapContainer.style.marginTop = '10px';
+    mapContainer.style.borderRadius = '12px';
+    mapContainer.style.zIndex = '1';
+    chat.appendChild(mapContainer);
+    chat.scrollTop = chat.scrollHeight;
+
+    var map = L.map(mapContainer.id).setView([46.603354, 1.888334], 6);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+    var villes = { "paris": [48.8566, 2.3522], "toulouse": [43.6047, 1.4442], "marseille": [43.2965, 5.3698], "lyon": [45.7640, 4.8357], "bordeaux": [44.8378, -0.5792], "lille": [50.6292, 3.0573], "nantes": [47.2184, -1.5536], "nice": [43.7102, 7.2620] };
+    var coord = villes[ville.toLowerCase()];
+    if (coord) {
+        map.setView(coord, 12);
+        L.marker(coord).addTo(map).bindPopup('<b>Recherche à ' + ville + '</b>').openPopup();
+    }
+};
 verifierPremium();
 </script>
 
