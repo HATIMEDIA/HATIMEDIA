@@ -980,6 +980,49 @@ window.initialiserCarte = function(ville) {
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
+        // Ajout de la barre de recherche
+        L.Control.geocoder({
+            defaultMarkGeocode: false,
+            placeholder: "Chercher une adresse...",
+            errorMessage: "Adresse introuvable."
+        }).on('markgeocode', function(e) {
+            var bbox = e.geocode.bbox;
+            var poly = L.polygon([
+                 bbox.getSouthEast(),
+                 bbox.getNorthEast(),
+                 bbox.getNorthWest(),
+                 bbox.getSouthWest()
+            ]);
+            map.fitBounds(poly.getBounds());
+            L.marker(e.geocode.center).addTo(map)
+                .bindPopup(e.geocode.name).openPopup();
+        }).addTo(map);
+
+        var villes = { 
+            "paris": [48.8566, 2.3522], "toulouse": [43.6047, 1.4442], 
+            "marseille": [43.2965, 5.3698], "lyon": [45.7640, 4.8357], 
+            "bordeaux": [44.8378, -0.5792], "lille": [50.6292, 3.0573], 
+            "nantes": [47.2184, -1.5536], "nice": [43.7102, 7.2620] 
+        };
+        
+        var coord = villes[ville.toLowerCase()];
+        if (coord) {
+            map.setView(coord, 12);
+            L.marker(coord).addTo(map).bindPopup('<b>Médecins à ' + ville + '</b>').openPopup();
+            
+            for (var i = 0; i < 3; i++) {
+                var offsetLat = (Math.random() - 0.5) * 0.03;
+                var offsetLng = (Math.random() - 0.5) * 0.03;
+                L.circleMarker([coord[0] + offsetLat, coord[1] + offsetLng], {
+                    radius: 6, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.8
+                }).addTo(map).bindPopup('Cabinet médical partenaire');
+            }
+        }
+
+        setTimeout(function() { map.invalidateSize(); }, 200);
+    }, 100);
+};
+
         var villes = { "paris": [48.8566, 2.3522], "toulouse": [43.6047, 1.4442], "marseille": [43.2965, 5.3698], "lyon": [45.7640, 4.8357], "bordeaux": [44.8378, -0.5792], "lille": [50.6292, 3.0573], "nantes": [47.2184, -1.5536], "nice": [43.7102, 7.2620] };
         var coord = villes[ville.toLowerCase()];
         if (coord) {
