@@ -979,23 +979,6 @@ window.initialiserCarte = function(ville) {
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
 
-        // Ajout de la barre de recherche (la loupe)
-        L.Control.geocoder({
-            defaultMarkGeocode: false,
-            placeholder: "Chercher une adresse...",
-            errorMessage: "Adresse introuvable."
-        }).on('markgeocode', function(e) {
-            var bbox = e.geocode.bbox;
-            var poly = L.polygon([
-                 bbox.getSouthEast(),
-                 bbox.getNorthEast(),
-                 bbox.getNorthWest(),
-                 bbox.getSouthWest()
-            ]);
-            map.fitBounds(poly.getBounds());
-            L.marker(e.geocode.center).addTo(map).bindPopup(e.geocode.name).openPopup();
-        }).addTo(map);
-
         var villes = { 
             "paris": [48.8566, 2.3522], "toulouse": [43.6047, 1.4442], 
             "marseille": [43.2965, 5.3698], "lyon": [45.7640, 4.8357], 
@@ -1021,6 +1004,10 @@ window.initialiserCarte = function(ville) {
     }, 100);
 };
 
+// Lancement de l'application
+verifierHistorique();
+input.focus();
+verifierPremium();
 // --- ON REMET LE LANCEMENT DE L'APPLICATION ICI ---
 verifierHistorique();
 input.focus();
