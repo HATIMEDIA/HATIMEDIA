@@ -63,3 +63,275 @@
         .send:hover { transform: scale(1.08); box-shadow: 0 6px 18px rgba(37, 99, 235, 0.4); }
         .send:disabled { background: #cbd5e1; cursor: not-allowed; transform: none; box-shadow: none; }
         footer { padding: 10px 16px 14px; text-align: center; font-size: 11px; color: #9ca3af; background: rgba(255, 255, 255, 0.95); flex-shrink: 0; }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <header class="header-banner">
+            <img src="/fond-chat.jpg" alt="HATIMEDIA" class="header-image">
+        </header>
+        <div class="header-buttons">
+            <button class="btn-header" id="btnPremium" onclick="passerPremium()">💎 Premium</button>
+            <button class="btn-header" id="btnTheme" onclick="toggleTheme()">🌙</button>
+            <button class="btn-header" onclick="nouvelleConversation()">Nouveau</button>
+        </div>
+        <div id="reprendreBanner" class="reprendre-banner">
+            💬 Vous avez une conversation en cours.
+            <button onclick="reprendreConversation()">La reprendre</button>
+        </div>
+        <div id="chat" class="chat">
+            <div id="welcome" class="welcome">
+                <img src="/mon-logo.png" class="logo-image" alt="HATIMEDIA">
+                <h2>Bienvenue sur HATIMEDIA</h2>
+                <p>Posez-moi n'importe quelle question, je suis là pour discuter avec vous.</p>
+                <div class="action-grid">
+                    <button class="action-card" onclick="document.getElementById('message').focus()">
+                        <span class="action-icon">💬</span>
+                        <strong>DISCUTER</strong>
+                        <small>Écrire un message</small>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="input-area">
+            <input id="message" type="text" placeholder="Votre message..." autocomplete="off">
+            <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+            <button id="uploadBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; padding: 10px;">📎</button>
+            <button class="send" id="sendBtn" onclick="envoyerMessage()">➤</button>
+        </div>
+        <footer>Propulsé par HATIMEDIA ✨</footer>
+    </div>
+
+    <script>
+        var chat = document.getElementById("chat");
+        var input = document.getElementById("message");
+        var sendBtn = document.getElementById("sendBtn");
+        var reprendreBanner = document.getElementById("reprendreBanner");
+        
+        var sessionId = localStorage.getItem("hatimedia_public_session");
+        if (!sessionId) {
+            sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
+            localStorage.setItem("hatimedia_public_session", sessionId);
+        }
+
+        var conversationId = null;
+        var enCours = false;
+        var voixActive = true;
+
+        function toggleTheme() {
+            document.body.classList.toggle("dark");
+            var isDark = document.body.classList.contains("dark");
+            localStorage.setItem("hatimedia_theme", isDark ? "dark" : "light");
+            document.getElementById("btnTheme").textContent = isDark ? "☀️" : "🌙";
+        }
+
+        (function chargerTheme() {
+            var theme = localStorage.getItem("hatimedia_theme");
+            if (theme === "dark") document.body.classList.add("dark");
+        })();
+
+        function faireParler(texte) {
+            if (!voixActive || !("speechSynthesis" in window)) return;
+            window.speechSynthesis.cancel();
+            var voix = new SpeechSynthesisUtterance(texte);
+            voix.lang = "fr-FR";
+            window.speechSynthesis.speak(voix);
+        }
+
+        async function verifierHistorique() {
+            try {
+                var r = await fetch("/api/chat-public/historique/" + sessionId);
+                var data = await r.json();
+                if (data.ok && data.messages && data.messages.length > 0) {
+                    conversationId = data.conversationId;
+                    reprendreBanner.classList.add("visible");
+                    window._messagesEnAttente = data.messages;
+                }
+            } catch (e) {}
+        }
+
+        function reprendreConversation() {
+            var messages = window._messagesEnAttente;
+            if (!messages) return;
+            var welcome = document.getElementById("welcome");
+            if (welcome) welcome.remove();
+            reprendreBanner.classList.remove("visible");
+            for (var i = 0; i < messages.length; i++) {
+                ajouterMessage(messages[i].content, messages[i].role === "user" ? "user" : "assistant", false, null);
+            }
+            chat.scrollTop = chat.scrollHeight;
+        }
+
+        function ajouterMessage(texte, type, scroll, messageId) {
+            if (scroll === undefined) scroll = true;
+            var welcome = document.getElementById("welcome");
+            if (welcome) welcome.remove();
+
+            var wrapper = document.createElement("div");
+            wrapper.className = "message-wrapper " + type;
+
+            var div = document.createElement("div");
+            div.className = "message " + type;
+            div.textContent = texte;
+            wrapper.appendChild(div);
+
+            chat.appendChild(wrapper);
+            if (scroll) chat.scrollTop = chat.scrollHeight;
+            return wrapper;
+        }
+
+        async function envoyerMessage() {
+            var texte = input.value.trim();
+            if (!texte || enCours) return;
+            enCours = true;
+            sendBtn.disabled = true;
+            reprendreBanner.classList.remove("visible");
+            ajouterMessage(texte, "user");
+            input.value = "";
+
+            var thinking = document.createElement("div");
+            thinking.className = "thinking";
+            thinking.innerHTML = '<div class="dot"></div><div class="dot"></div><div class="dot"></div>';
+            chat.appendChild(thinking);
+            chat.scrollTop = chat.scrollHeight;
+
+            try {
+                var r = await fetch("/api/chat-public", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        message: texte,
+                        sessionId: sessionId,
+                        conversationId: conversationId
+                    })
+                });
+                var data = await r.json();
+                thinking.remove();
+                
+                if (data.reply) {
+                    ajouterMessage(data.reply, "assistant", true, data.messageId);
+                    
+                    if (data.carte) {
+                        window.initialiserCarte(data.carte);
+                    }
+                    
+                    if (data.conversationId) conversationId = data.conversationId;
+                    if (voixActive) faireParler(data.reply);
+                } else {
+                    ajouterMessage("Hmm, je n'ai pas pu répondre. Réessayez !", "assistant");
+                }
+            } catch (error) {
+                thinking.remove();
+                ajouterMessage("Connexion perdue. Vérifiez votre réseau.", "assistant");
+            }
+            enCours = false;
+            sendBtn.disabled = false;
+            input.focus();
+        }
+
+        function nouvelleConversation() {
+            if (!confirm("Démarrer une nouvelle conversation ?")) return;
+            sessionId = "sess_" + Math.random().toString(36).substring(2) + Date.now();
+            localStorage.setItem("hatimedia_public_session", sessionId);
+            conversationId = null;
+            location.reload();
+        }
+
+        input.addEventListener("keydown", function (e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                envoyerMessage();
+            }
+        });
+
+        document.getElementById('uploadBtn').addEventListener('click', () => {
+            document.getElementById('imageUpload').click();
+        });
+
+        document.getElementById('imageUpload').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                const base64Image = event.target.result;
+                
+                if (chat) {
+                    chat.innerHTML += `<div class="message user"><img src="${base64Image}" style="max-width: 200px; border-radius: 10px;"></div>`;
+                    chat.scrollTop = chat.scrollHeight;
+                }
+
+                try {
+                    const response = await fetch('/api/chat-vision', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: base64Image, message: "Analyse cette image médicale." })
+                    });
+                    const data = await response.json();
+                    
+                    if (chat) {
+                        chat.innerHTML += `<div class="message assistant">${data.reply}</div>`;
+                        chat.scrollTop = chat.scrollHeight;
+                    }
+                } catch (error) {
+                    console.error("Erreur d'analyse d'image", error);
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        window.initialiserCarte = function(ville) {
+            var mapContainer = document.createElement('div');
+            mapContainer.id = 'map-' + Date.now();
+            mapContainer.style.height = '250px';
+            mapContainer.style.width = '100%';
+            mapContainer.style.marginTop = '10px';
+            mapContainer.style.borderRadius = '12px';
+            mapContainer.style.zIndex = '1';
+            chat.appendChild(mapContainer);
+            chat.scrollTop = chat.scrollHeight;
+
+            setTimeout(function() {
+                var map = L.map(mapContainer.id, {
+                    dragging: true,
+                    touchZoom: true,
+                    scrollWheelZoom: true,
+                    doubleClickZoom: true
+                }).setView([46.603354, 1.888334], 6);
+
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+
+                try {
+                    L.Control.geocoder({
+                        defaultMarkGeocode: false,
+                        placeholder: "Chercher une adresse...",
+                        errorMessage: "Adresse introuvable."
+                    }).on('markgeocode', function(e) {
+                        var bbox = e.geocode.bbox;
+                        var poly = L.polygon([ bbox.getSouthEast(), bbox.getNorthEast(), bbox.getNorthWest(), bbox.getSouthWest() ]);
+                        map.fitBounds(poly.getBounds());
+                        L.marker(e.geocode.center).addTo(map).bindPopup(e.geocode.name).openPopup();
+                    }).addTo(map);
+                } catch (err) {}
+
+                var villes = { "paris": [48.8566, 2.3522], "toulouse": [43.6047, 1.4442], "marseille": [43.2965, 5.3698], "lyon": [45.7640, 4.8357], "bordeaux": [44.8378, -0.5792], "lille": [50.6292, 3.0573], "nantes": [47.2184, -1.5536], "nice": [43.7102, 7.2620] };
+                var coord = villes[ville.toLowerCase()];
+                if (coord) {
+                    map.setView(coord, 12);
+                    L.marker(coord).addTo(map).bindPopup('<b>Médecins à ' + ville + '</b>').openPopup();
+                    for (var i = 0; i < 3; i++) {
+                        var offsetLat = (Math.random() - 0.5) * 0.03;
+                        var offsetLng = (Math.random() - 0.5) * 0.03;
+                        L.circleMarker([coord[0] + offsetLat, coord[1] + offsetLng], { radius: 6, color: '#2563eb', fillColor: '#3b82f6', fillOpacity: 0.8 }).addTo(map).bindPopup('Cabinet médical partenaire');
+                    }
+                }
+
+                setTimeout(function() { map.invalidateSize(); }, 200);
+            }, 100);
+        };
+
+        verifierHistorique();
+        input.focus();
+    </script>
+</body>
+</html>
