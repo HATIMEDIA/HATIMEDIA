@@ -899,64 +899,34 @@ app.post("/api/chat-public", async (req, res) => {
         const sessionId = req.body.sessionId;
         const conversationIdRecu = req.body.conversationId || null;
 
-        if (!message) {
-            return res.status(400).json({ ok: false, error: "Message vide." });
-        }
-        if (message.length > 2000) {
-            return res.status(400).json({ ok: false, error: "Message trop long." });
-        }
-        if (!sessionId) {
-            return res.status(400).json({ ok: false, error: "Session manquante." });
-        }
+        if (!message) return res.status(400).json({ ok: false, error: "Message vide." });
+        if (message.length > 2000) return res.status(400).json({ ok: false, error: "Message trop long." });
+        if (!sessionId) return res.status(400).json({ ok: false, error: "Session manquante." });
 
         const userId = await getOrCreateAnonymousUser(sessionId);
-
         let conversationId = null;
 
         if (conversationIdRecu) {
-            const check = await pool.query(
-                `SELECT id FROM conversations WHERE id = $1 AND user_id = $2`,
-                [conversationIdRecu, userId]
-            );
+            const check = await pool.query(`SELECT id FROM conversations WHERE id = $1 AND user_id = $2`, [conversationIdRecu, userId]);
             if (check.rows.length > 0) conversationId = check.rows[0].id;
         }
 
         if (!conversationId) {
-            const conv = await pool.query(
-                `SELECT id FROM conversations WHERE user_id = $1
-                 ORDER BY created_at DESC LIMIT 1`,
-                [userId]
-            );
+            const conv = await pool.query(`SELECT id FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [userId]);
             if (conv.rows.length > 0) conversationId = conv.rows[0].id;
         }
 
         if (!conversationId) {
-            const nouvelle = await pool.query(
-                `INSERT INTO conversations (user_id, title)
-                 VALUES ($1, $2) RETURNING id`,
-                [userId, "Chat public"]
-            );
+            const nouvelle = await pool.query(`INSERT INTO conversations (user_id, title) VALUES ($1, $2) RETURNING id`, [userId, "Chat public"]);
             conversationId = nouvelle.rows[0].id;
         }
 
-        await pool.query(
-            `INSERT INTO messages (conversation_id, role, content)
-             VALUES ($1, $2, $3)`,
-            [conversationId, "user", message]
-        );
+        await pool.query(`INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)`, [conversationId, "user", message]);
+        await pool.query(`UPDATE conversations SET title = $1 WHERE id = $2 AND title IN ('Chat public', 'Nouvelle conversation')`, [message.length > 60 ? message.slice(0, 60) + "…" : message, conversationId]);
 
-        await pool.query(
-            `UPDATE conversations SET title = $1
-             WHERE id = $2 AND title IN ('Chat public', 'Nouvelle conversation')`,
-            [message.length > 60 ? message.slice(0, 60) + "…" : message, conversationId]
-        );
+        const historique = await pool.query(`SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [conversationId]);
 
-        const historique = await pool.query(
-            `SELECT role, content FROM messages
-             WHERE conversation_id = $1 ORDER BY created_at ASC`,
-            [conversationId]
-        );
-
+        // --- 1. RÉCUPÉRATION DES CONTEXTES ---
         const contexteRAG = await getContexteRAG(message);
 
         let contexteMedicament = "";
@@ -977,41 +947,32 @@ app.post("/api/chat-public", async (req, res) => {
             contextePraticien = formaterPraticiensPourPrompt(textePraticiens);
         }
 
-                let contexteOrdonnance = "";
+        let contexteOrdonnance = "";
         if (estQuestionOrdonnance(message)) {
             const analyse = await analyserOrdonnance(message);
             contexteOrdonnance = "\n\n📋 ANALYSE D'ORDONNANCE :\n" + analyse + "\n";
         }
-        
+
         let contexteRendezVous = "";
         if (estQuestionRendezVous(message)) {
             contexteRendezVous = "\n\n🗓️ L'UTILISATEUR VEUT UN RENDEZ-VOUS.\n" +
                 "Avant de chercher un créneau, tu DOIS lui demander ces 4 informations s'il ne les a pas données :\n" +
-                "1. Nom et Prénom\n" +
-                "2. Date de naissance (JJ/MM/AAAA)\n" +
-                "3. Adresse email\n" +
-                "4. La spécialité exacte et la ville souhaitée.\n" +
-                "Une fois que tu as TOUT, dis-lui que tu vas chercher les créneaux (la connexion Anteos arrive bientôt).\n";
+                "1. Nom et Prénom\n2. Date de naissance (JJ/MM/AAAA)\n3. Adresse email\n4. La spécialité exacte et la ville souhaitée.\n" +
+                "Une fois que tu as TOUT, tu DOIS inclure EXACTEMENT ce bloc caché à la fin de ta réponse (le patient ne doit pas le voir) :\n" +
+                "[MAKE_RDV: {\"nom\": \"...\", \"dob\": \"...\", \"email\": \"...\", \"specialite\": \"...\", \"ville\": \"...\"}]\n" +
+                "Et dis à l'utilisateur que sa demande est transmise.\n";
         }
 
-        // --- TRIAGE MÉDICAL ---
         let contexteTriage = "";
         const triage = evaluerUrgence(message);
-        
         if (triage.urgence) {
-            contexteTriage = "\n\n🚨 ALERTE ROUGE : L'utilisateur décrit des symptômes potentiellement vitaux. " +
-                             "Tu DOIS lui dire d'appeler immédiatement le 15 (SAMU) ou le 112. " +
-                             "Ne pose pas de diagnostic, dis-lui que c'est une urgence.\n";
+            contexteTriage = "\n\n🚨 ALERTE ROUGE : L'utilisateur décrit des symptômes potentiellement vitaux. Tu DOIS lui dire d'appeler immédiatement le 15 (SAMU) ou le 112. Ne pose pas de diagnostic, dis-lui que c'est une urgence.\n";
         } else if (triage.symptome) {
-            contexteTriage = "\n\n🩺 ORIENTATION : L'utilisateur décrit des symptômes (pas d'urgence vitale détectée). " +
-                             "Rappelle que tu n'es pas médecin, donne des conseils de bon sens, " +
-                             "et propose-lui de chercher un médecin généraliste disponible près de chez lui si besoin.\n";
+            contexteTriage = "\n\n🩺 ORIENTATION : L'utilisateur décrit des symptômes (pas d'urgence vitale détectée). Rappelle que tu n'es pas médecin, donne des conseils de bon sens, et propose-lui de chercher un médecin généraliste disponible près de chez lui si besoin.\n";
         }
 
-
-        
-
-              const response = await client.responses.create({
+        // --- 2. RÉPONSE DE L'IA ---
+        const response = await client.responses.create({
             model: "gpt-5",
             instructions:
                 "Tu es HATIMEDIA, un assistant IA spécialisé dans l'information médicale et la santé. " +
@@ -1022,59 +983,47 @@ app.post("/api/chat-public", async (req, res) => {
                 "3. Ajoute TOUJOURS un rappel de prudence à la fin de tes réponses médicales : 'Ceci est une information à titre indicatif. Consultez un médecin ou un pharmacien pour un avis médical.'\n" +
                 "4. Ne donne pas de posologie exacte pour les médicaments (sauf si elle est explicitement fournie dans les données officielles). Renvoie vers la notice ou le pharmacien.\n" +
                 "\n\nRÈGLES DE COMPORTEMENT :\n" +
-                "1. Va droit au but (2-4 phrases sauf demande explicite).\n" +
-                "2. Sois empathique et rassurant, mais garde un ton professionnel.\n" +
-                "3. Utilise le tutoiement (tu), pas le vouvoiement.\n" +
-                "4. Si tu as des données officielles (médicaments, praticiens), utilise-les en PRIORITÉ.\n" +
-                "5. Si tu ne sais pas, dis-le honnêtement. N'invente JAMAIS.\n" +
-                "6. Ne prétends JAMAIS avoir fait une action que tu n'as pas faite.\n" +
+                "1. Va droit au but (2-4 phrases sauf demande explicite).\n2. Sois empathique et rassurant, mais garde un ton professionnel.\n" +
+                "3. Utilise le tutoiement (tu).\n4. Si tu as des données officielles, utilise-les en PRIORITÉ.\n5. N'invente JAMAIS.\n" +
                 "\n\nPROTOCOLE DE PRÉ-CONSULTATION :\n" +
                 "1. Si l'utilisateur demande un bilan de santé, une pré-consultation, ou décrit des symptômes complexes, propose-lui de faire un 'Bilan de Pré-Consultation'.\n" +
-                "2. S'il accepte, tu DOIS lui poser les questions UNE PAR UNE, dans cet ordre :\n" +
-                "   - Quel est ton âge et ton sexe ?\n" +
-                "   - Quel est le symptôme principal et depuis combien de temps ?\n" +
-                "   - As-tu des antécédents médicaux ou des allergies connues ?\n" +
-                "   - Quels médicaments prends-tu actuellement (même sans ordonnance) ?\n" +
+                "2. S'il accepte, tu DOIS lui poser les questions UNE PAR UNE :\n   - Quel est ton âge et ton sexe ?\n   - Quel est le symptôme principal et depuis combien de temps ?\n   - As-tu des antécédents médicaux ou des allergies connues ?\n   - Quels médicaments prends-tu actuellement ?\n" +
                 "3. Une fois que tu as TOUTES ces informations, génère un 'COMPTE-RENDU DE PRÉ-CONSULTATION' avec ce format exact :\n" +
-                "   📋 **Compte-rendu de pré-consultation**\n" +
-                "   - **Patient** : [Âge] ans, [Sexe]\n" +
-                "   - **Motif** : [Symptôme et durée]\n" +
-                "   - **Antécédents / Allergies** : [Infos]\n" +
-                "   - **Traitements en cours** : [Infos]\n" +
-                "   - **Synthèse pour le médecin** : [Résumé clair de 2-3 phrases]\n" +
-                "   - **Conseil** : Ceci est une information à titre indicatif. Consultez un médecin.\n" +
-                "4. Ne pose pas de diagnostic. Ne prescris rien. Ton rôle est uniquement de récolter les informations.\n" +
+                "   📋 **Compte-rendu de pré-consultation**\n   - **Patient** : [Âge] ans, [Sexe]\n   - **Motif** : [Symptôme et durée]\n   - **Antécédents / Allergies** : [Infos]\n   - **Traitements en cours** : [Infos]\n   - **Synthèse pour le médecin** : [Résumé clair de 2-3 phrases]\n   - **Conseil** : Ceci est une information à titre indicatif. Consultez un médecin.\n" +
+                "4. Ne pose pas de diagnostic. Ton rôle est de récolter les informations.\n" +
                 (contexteRAG ? "\n\n📚 BASE DE CONNAISSANCES :\n" + contexteRAG : "") +
-                contexteMedicament +
-                contexteTriage +
-                contextePraticien +
-                contexteRendezVous +
-                contexteOrdonnance +
+                contexteMedicament + contexteTriage + contextePraticien + contexteRendezVous + contexteOrdonnance +
                 "\n\nRéponds maintenant à la question.",
-            input: historique.rows.slice(-6).map(m => ({
-                role: m.role,
-                content: m.content
-            }))
+            input: historique.rows.slice(-6).map(m => ({ role: m.role, content: m.content }))
         });
+
         const reply = response.output_text;
 
-           const insertedMsg = await pool.query(
-            `INSERT INTO messages (conversation_id, role, content)
-             VALUES ($1, $2, $3)
-             RETURNING id`,
-            [conversationId, "assistant", reply]
-        );
+        // --- 3. INTERCEPTION POUR MAKE (GOOGLE CALENDAR) ---
+        let cleanReply = reply;
+        const regexMake = /\[MAKE_RDV:\s*(\{.*?\})\s*\]/s;
+        const matchMake = reply.match(regexMake);
 
-        envoyerNotificationSlack(message, reply, sessionId).catch(err =>
-            console.error("Erreur Slack :", err)
-        );
+        if (matchMake) {
+            const rdvData = matchMake[1];
+            cleanReply = reply.replace(matchMake[0], "").trim(); 
+            
+            if (process.env.MAKE_WEBHOOK_URL) {
+                fetch(process.env.MAKE_WEBHOOK_URL, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: rdvData
+                }).then(() => console.log("✅ Données RDV envoyées à Make"))
+                  .catch(err => console.error("❌ Erreur envoi Make:", err));
+            }
+        }
 
-               // Notification Discord
-        envoyerNotificationDiscord(message, reply, sessionId).catch(err =>
-            console.error("Erreur Discord :", err)
-        );
+        // --- 4. SAUVEGARDE ET NOTIFICATIONS ---
+        const insertedMsg = await pool.query(`INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id`, [conversationId, "assistant", cleanReply]);
 
-                // Notification Google Sheets
+        envoyerNotificationSlack(message, cleanReply, sessionId).catch(err => console.error("Erreur Slack :", err));
+        envoyerNotificationDiscord(message, cleanReply, sessionId).catch(err => console.error("Erreur Discord :", err));
+
         if (process.env.GOOGLE_SHEET_WEBHOOK) {
             fetch(process.env.GOOGLE_SHEET_WEBHOOK, {
                 method: "POST",
@@ -1083,12 +1032,10 @@ app.post("/api/chat-public", async (req, res) => {
             }).catch(err => console.error("Erreur Google Sheets :", err));
         }
 
-                    const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
-        envoyerNotification(message, reply, sessionId, typeNotif).catch(err =>
-            console.error("Erreur notif :", err)
-        );
+        const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
+        envoyerNotification(message, cleanReply, sessionId, typeNotif).catch(err => console.error("Erreur notif :", err));
 
-        // --- DÉTECTION POUR LA CARTE INTERACTIVE ---
+        // --- 5. DÉTECTION POUR LA CARTE ---
         let afficherCarte = false;
         let villeCarte = "";
         
@@ -1103,7 +1050,7 @@ app.post("/api/chat-public", async (req, res) => {
 
         res.json({ 
             ok: true, 
-            reply, 
+            reply: cleanReply, 
             conversationId, 
             messageId: insertedMsg.rows[0].id,
             carte: afficherCarte ? villeCarte : null
