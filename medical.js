@@ -88,9 +88,18 @@ module.exports = function(app, client) {
                 jsonrpc: "2.0", id: 1, method: "tools/call",
                 params: { name: "search_praticiens", arguments: argumentsMCP }
             };
+            
+            // ⬇️ LE USER-AGENT EST AJOUTÉ ICI POUR CONTOURNER LE 403 FORBIDDEN ⬇️
             const response = await fetch("https://monsuivimedical.fr/mcp", {
-                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload)
+                method: "POST", 
+                headers: { 
+                    "Content-Type": "application/json",
+                    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                }, 
+                body: JSON.stringify(payload)
             });
+            // ⬆️ FIN DE LA CORRECTION ⬆️
+
             if (!response.ok) return null;
             const data = await response.json();
             return data.result && data.result.content && data.result.content[0] ? data.result.content[0].text : null;
@@ -179,6 +188,7 @@ module.exports = function(app, client) {
             return "Impossible de contacter Anteos pour le moment.";
         }
     }
+
 // ===== ANALYSE D'ORDONNANCE =====
     async function analyserOrdonnance(texteOrdonnance) {
         if (!texteOrdonnance) return "Aucun texte fourni.";
