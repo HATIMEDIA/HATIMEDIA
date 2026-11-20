@@ -373,9 +373,6 @@ app.post("/api/chat-public", async (req, res) => {
         }
 
         let contexteRendezVous = "";
-        if (estQuestionRendezVous(message)) {
-            contexteRendezVous = "\n\n🗓️ RDV : Demande Nom, Date de naissance, Email, Spécialité, Ville. À la fin, inclus EXACTEMENT ce bloc (caché) : [MAKE_RDV: {\"nom\": \"...\", \"dob\": \"...\", \"email\": \"...\", \"specialite\": \"...\", \"ville\": \"...\"}]\n";
-        }
 
         let contexteTriage = "";
         const triage = evaluerUrgence(message);
