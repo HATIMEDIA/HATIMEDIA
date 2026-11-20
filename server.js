@@ -347,92 +347,103 @@ app.post("/api/chat-public", async (req, res) => {
 
         const historique = await pool.query(`SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [conversationId]);
 
-        // --- 1. RÉCUPÉRATION DES CONTEXTES ---
-        const contexteRAG = await getContexteRAG(message);
+        // --- LOGIQUE EXCLUSIVE ---
+        let contexteInstruction = "";
+        let afficherCarte = false;
+        let villeCarte = "";
 
-        let contexteMedicament = "";
-        if (estQuestionMedicament(message)) {
-            const nomMed = extraireNomMedicament(message);
-            const meds = await rechercherMedicament(nomMed);
-            contexteMedicament = formaterMedicamentsPourPrompt(meds);
-        }
+        const isRdv = estQuestionRendezVous(message);
 
-        let contextePraticien = "";
-        if (estQuestionPraticien(message)) {
-            const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const ville = ["paris", "marseille", "lyon", "toulouse", "nice", "nantes", "bordeaux", "lille", "rennes", "strasbourg"].find(v => m.includes(v)) || "";
-            const specialite = ["generaliste", "cardio", "dermato", "ophtalmo", "pediatre", "gyneco", "dentiste", "kine"].find(s => m.includes(s)) || "";
-            const textePraticiens = await chercherPraticien(specialite, ville);
-            contextePraticien = formaterPraticiensPourPrompt(textePraticiens);
-        }
-
-        let contexteOrdonnance = "";
-        if (estQuestionOrdonnance(message)) {
-            const analyse = await analyserOrdonnance(message);
-            contexteOrdonnance = "\n\n📋 ANALYSE D'ORDONNANCE :\n" + analyse + "\n";
-        }
-
-                let contexteRendezVous = "";
-        if (estQuestionRendezVous(message)) {
-            contexteRendezVous = "\n\n🗓️ L'UTILISATEUR VEUT UN RENDEZ-VOUS.\n" +
-                "⚠️ IMPORTANT : Ne pose PAS de questions médicales (symptômes, âge, antécédents). Concentre-toi UNIQUEMENT sur la prise du rendez-vous.\n" +
-                "Tu DOIS lui demander ces 4 informations s'il ne les a pas données :\n" +
-                "1. Nom et Prénom\n" +
-                "2. Adresse email\n" +
-                "3. La spécialité souhaitée (ex: généraliste, dermato...)\n" +
-                "4. La ville souhaitée\n" +
-                "Une fois que tu as TOUT (les 4 infos), tu DOIS inclure EXACTEMENT ce bloc caché à la fin de ta réponse (le patient ne doit pas le voir) :\n" +
+        if (isRdv) {
+            // MODE RENDEZ-VOUS UNIQUEMENT
+            contexteInstruction = "\n\n🗓️ MODE RENDEZ-VOUS.\n" +
+                "⚠️ NE POSE AUCUNE QUESTION MÉDICALE (pas de symptômes, pas d'âge, pas d'antécédents).\n" +
+                "Tu DOIS demander UNIQUEMENT ces 4 informations s'il ne les a pas déjà données dans l'historique :\n" +
+                "1. Nom et Prénom\n2. Email\n3. Spécialité (ex: généraliste)\n4. Ville\n" +
+                "Une fois que tu as TOUT, tu DOIS inclure EXACTEMENT ce bloc à la fin de ta réponse (invisible pour l'utilisateur) :\n" +
                 "[MAKE_RDV: {\"nom\": \"...\", \"email\": \"...\", \"specialite\": \"...\", \"ville\": \"...\"}]\n" +
                 "Et dis à l'utilisateur : 'Votre demande de rendez-vous est transmise.'\n";
+            
+            // On vérifie s'il y a une ville pour la carte
+            const v = ["paris", "toulouse", "marseille", "lyon", "bordeaux", "lille", "nantes", "nice"].find(v => message.toLowerCase().includes(v));
+            if (v) { afficherCarte = true; villeCarte = v; }
+
+        } else {
+            // MODE MÉDICAL NORMAL
+            const contexteRAG = await getContexteRAG(message);
+            let contexteMedicament = "";
+            if (estQuestionMedicament(message)) {
+                const nomMed = extraireNomMedicament(message);
+                const meds = await rechercherMedicament(nomMed);
+                contexteMedicament = formaterMedicamentsPourPrompt(meds);
+            }
+
+            let contextePraticien = "";
+            if (estQuestionPraticien(message)) {
+                const m = message.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const ville = ["paris", "marseille", "lyon", "toulouse", "nice", "nantes", "bordeaux", "lille", "rennes", "strasbourg"].find(v => m.includes(v)) || "";
+                const specialite = ["generaliste", "cardio", "dermato", "ophtalmo", "pediatre", "gyneco", "dentiste", "kine"].find(s => m.includes(s)) || "";
+                const textePraticiens = await chercherPraticien(specialite, ville);
+                contextePraticien = formaterPraticiensPourPrompt(textePraticiens);
+                if (ville) { afficherCarte = true; villeCarte = ville; }
+            }
+
+            let contexteOrdonnance = "";
+            if (estQuestionOrdonnance(message)) {
+                const analyse = await analyserOrdonnance(message);
+                contexteOrdonnance = "\n\n📋 ANALYSE D'ORDONNANCE :\n" + analyse + "\n";
+            }
+
+            let contexteTriage = "";
+            const triage = evaluerUrgence(message);
+            if (triage.urgence) {
+                contexteTriage = "\n\n🚨 ALERTE ROUGE : L'utilisateur décrit des symptômes potentiellement vitaux. Tu DOIS lui dire d'appeler immédiatement le 15 (SAMU) ou le 112.\n";
+            } else if (triage.symptome) {
+                contexteTriage = "\n\n🩺 ORIENTATION : L'utilisateur décrit des symptômes. Rappelle que tu n'es pas médecin, donne des conseils de bon sens.\n";
+            }
+
+            contexteInstruction = (contexteRAG ? "\n\n📚 RAG :\n" + contexteRAG : "") +
+                contexteMedicament + contexteTriage + contextePraticien + contexteOrdonnance;
         }
 
-        let contexteTriage = "";
-        const triage = evaluerUrgence(message);
-        if (triage.urgence) {
-            contexteTriage = "\n\n🚨 ALERTE ROUGE : L'utilisateur décrit des symptômes potentiellement vitaux. Tu DOIS lui dire d'appeler immédiatement le 15 (SAMU) ou le 112.\n";
-        } else if (triage.symptome) {
-            contexteTriage = "\n\n🩺 ORIENTATION : L'utilisateur décrit des symptômes. Rappelle que tu n'es pas médecin, donne des conseils de bon sens.\n";
-        }
-
-        // --- 2. RÉPONSE DE L'IA ---
+        // --- APPEL IA ---
         const response = await client.responses.create({
             model: "gpt-5",
             instructions: "Tu es HATIMEDIA, un assistant IA spécialisé dans la santé. Réponds en français de façon naturelle et professionnelle. " +
-                "\n\nRÈGLES :\n1. Tu n'es PAS un médecin. Pas de diagnostic. Pas de prescription.\n2. Urgence grave -> Appeler le 15.\n3. Rappel de prudence à la fin.\n4. Ne donne pas de posologie exacte.\n" +
-                "\n\nPROTOCOLE PRÉ-CONSULTATION :\nPose les questions UNE PAR UNE : Âge/Sexe ? Symptôme/Durée ? Antécédents ? Médicaments ? Puis génère un 'COMPTE-RENDU DE PRÉ-CONSULTATION' structuré.\n" +
-                (contexteRAG ? "\n\n📚 RAG :\n" + contexteRAG : "") +
-                contexteMedicament + contexteTriage + contextePraticien + contexteRendezVous + contexteOrdonnance +
-                "\n\nRéponds maintenant à la question.",
-                      input: historique.rows.slice(-6).map(m => ({ role: m.role, content: m.content }))
+                "\n\nRÈGLES GÉNÉRALES :\n1. Tu n'es PAS un médecin. Pas de diagnostic. Pas de prescription.\n2. Urgence grave -> Appeler le 15.\n3. Rappel de prudence à la fin.\n4. Ne donne pas de posologie exacte.\n" +
+                contexteInstruction +
+                "\n\nRéponds maintenant.",
+            input: historique.rows.slice(-6).map(m => ({ role: m.role, content: m.content }))
         });
 
         const reply = response.output_text;
 
-        // --- INTERCEPTION POUR MAKE (GOOGLE CALENDAR) ---
+        // --- INTERCEPTION MAKE ---
         let cleanReply = reply;
         const matchMake = reply.match(/\[MAKE_RDV:\s*(\{.*?\})\s*\]/s);
         if (matchMake) {
             cleanReply = reply.replace(matchMake[0], "").trim(); 
             if (process.env.MAKE_WEBHOOK_URL) {
                 fetch(process.env.MAKE_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: matchMake[1] })
-                    .then(() => console.log("✅ RDV envoyé à Make")).catch(err => console.error("❌ Erreur Make:", err));
+                    .then(() => console.log("✅ RDV envoyé à Google Calendar")).catch(err => console.error("❌ Erreur Google Calendar:", err));
             }
         }
 
         const insertedMsg = await pool.query(`INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id`, [conversationId, "assistant", cleanReply]);
+        
         envoyerNotificationSlack(message, cleanReply, sessionId).catch(() => {});
         envoyerNotificationDiscord(message, cleanReply, sessionId).catch(() => {});
+        
         const typeNotif = estQuestionOrdonnance(message) ? "ordonnance" : "message";
         envoyerNotification(message, cleanReply, sessionId, typeNotif).catch(() => {});
 
-        let afficherCarte = false;
-        let villeCarte = "";
-        if (estQuestionPraticien(message)) {
-            const v = ["paris", "toulouse", "marseille", "lyon", "bordeaux", "lille", "nantes", "nice"].find(v => message.toLowerCase().includes(v));
-            if (v) { afficherCarte = true; villeCarte = v; }
-        }
-
-        res.json({ ok: true, reply: cleanReply, conversationId, messageId: insertedMsg.rows[0].id, carte: afficherCarte ? villeCarte : null });
+        res.json({ 
+            ok: true, 
+            reply: cleanReply, 
+            conversationId, 
+            messageId: insertedMsg.rows[0].id,
+            carte: afficherCarte ? villeCarte : null
+        });
 
     } catch (error) {
         console.error("❌ Erreur chat public :", error);
