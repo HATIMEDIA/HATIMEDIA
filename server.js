@@ -372,7 +372,19 @@ app.post("/api/chat-public", async (req, res) => {
             contexteOrdonnance = "\n\n📋 ANALYSE D'ORDONNANCE :\n" + analyse + "\n";
         }
 
-        let contexteRendezVous = "";
+                let contexteRendezVous = "";
+        if (estQuestionRendezVous(message)) {
+            contexteRendezVous = "\n\n🗓️ L'UTILISATEUR VEUT UN RENDEZ-VOUS.\n" +
+                "⚠️ IMPORTANT : Ne pose PAS de questions médicales (symptômes, âge, antécédents). Concentre-toi UNIQUEMENT sur la prise du rendez-vous.\n" +
+                "Tu DOIS lui demander ces 4 informations s'il ne les a pas données :\n" +
+                "1. Nom et Prénom\n" +
+                "2. Adresse email\n" +
+                "3. La spécialité souhaitée (ex: généraliste, dermato...)\n" +
+                "4. La ville souhaitée\n" +
+                "Une fois que tu as TOUT (les 4 infos), tu DOIS inclure EXACTEMENT ce bloc caché à la fin de ta réponse (le patient ne doit pas le voir) :\n" +
+                "[MAKE_RDV: {\"nom\": \"...\", \"email\": \"...\", \"specialite\": \"...\", \"ville\": \"...\"}]\n" +
+                "Et dis à l'utilisateur : 'Votre demande de rendez-vous est transmise.'\n";
+        }
 
         let contexteTriage = "";
         const triage = evaluerUrgence(message);
