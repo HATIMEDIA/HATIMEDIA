@@ -137,6 +137,55 @@ app.post("/api/chat-public", async (req, res) => {
     }
 });
 
+// ========================================
+// RECHERCHE AVANCÉE DE PRATICIENS (API FHIR ANS)
+// ========================================
+
+app.get("/api/praticien/recherche-avancee", async (req, res) => {
+    try {
+        const { specialite, ville } = req.query;
+        if (!specialite && !ville) {
+            return res.status(400).json({ ok: false, error: "Spécifiez une spécialité ou une ville." });
+        }
+
+        // L'API FHIR de l'ANS se trouve à cette adresse (exemple, à vérifier)
+        const baseUrl = "https://interop.esante.gouv.fr/ig/fhir/annuaire";
+        
+        // On construit la requête pour chercher des praticiens
+        let searchUrl = `${baseUrl}/Practitioner?`;
+        if (specialite) searchUrl += `specialty=${encodeURIComponent(specialite)}&`;
+        if (ville) searchUrl += `address-city=${encodeURIComponent(ville)}&`;
+        
+        // On demande les 10 premiers résultats
+        searchUrl = searchUrl.slice(0, -1) + "&_count=10";
+
+        const response = await fetch(searchUrl, {
+            headers: { "Accept": "application/fhir+json" }
+        });
+
+        if (!response.ok) {
+            return res.status(response.status).json({ ok: false, error: "Erreur de l'API Annuaire Santé." });
+        }
+
+        const bundle = await response.json();
+        
+        // On formate les résultats pour le front-end
+        const praticiens = (bundle.entry || []).map(item => {
+            const p = item.resource;
+            const name = p.name?.[0]?.text || "Nom non renseigné";
+            const specialty = p.specialty?.[0]?.coding?.[0]?.display || "Spécialité inconnue";
+            const address = p.address?.[0]?.text || "Adresse non renseignée";
+            return { nom: name, specialite: specialty, adresse: address };
+        });
+
+        res.json({ ok: true, praticiens });
+    } catch (error) {
+        console.error("❌ Erreur recherche avancée:", error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." });
+    }
+});
+
+
 app.get("/api/chat-public/historique/:sessionId", async (req, res) => { try { const userId = await getOrCreateAnonymousUser(req.params.sessionId); const conv = await pool.query(`SELECT id FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [userId]); if (!conv.rows.length) return res.json({ ok: true, messages: [] }); const msgs = await pool.query(`SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [conv.rows[0].id]); res.json({ ok: true, conversationId: conv.rows[0].id, messages: msgs.rows }); } catch (e) { res.status(500).json({ ok: false }); } });
 
 // VISION IA
