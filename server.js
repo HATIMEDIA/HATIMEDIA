@@ -59,8 +59,17 @@ app.post("/api/chat-public", async (req, res) => {
 
         let contexteInstruction = "", afficherCarte = false, villeCarte = "";
         
-        if (estQuestionRendezVous(message)) {
-            contexteInstruction = "\n\n🗓️ MODE RDV UNIQUEMENT. Ne pose AUCUNE question médicale. Demande: 1. Nom, 2. Email, 3. Spécialité, 4. Ville. À la fin, inclus : [MAKE_RDV: {\"nom\": \"...\", \"email\": \"...\", \"specialite\": \"...\", \"ville\": \"...\"}]\n";
+        // DÉTECTION DU MODE RDV
+        const isRdv = estQuestionRendezVous(message) || historique.rows.some(m => m.content.includes("RDV") || m.content.includes("rendez-vous"));
+
+        if (isRdv) {
+            contexteInstruction = "\n\n🗓️ MODE RENDEZ-VOUS ACTIF.\n" +
+                "⚠️ INTERDICTION de poser des questions médicales.\n" +
+                "Tu es un secrétaire. Vérifie dans l'historique si l'utilisateur t'a donné ces 4 infos :\n" +
+                "1. Nom\n2. Email\n3. Spécialité\n4. Ville\n" +
+                "S'il manque une info, demande-la poliment.\n" +
+                "SI TU AS LES 4 INFOS, réponds 'Votre demande de rendez-vous est transmise.' (Ne génère pas de bloc caché, le serveur s'en occupe).\n";
+            
             const v = ["paris", "toulouse", "marseille", "lyon"].find(x => message.toLowerCase().includes(x));
             if (v) { afficherCarte = true; villeCarte = v; }
         } else {
@@ -76,34 +85,56 @@ app.post("/api/chat-public", async (req, res) => {
                 (ord ? "\nOrdonnance:" + ord : "") +
                 (triage.urgence ? "\n🚨 URGENCE: Dis d'appeler le 15." : triage.symptome ? "\n🩺 Symptômes: Conseille prudemment." : "");
             
-            if (prat && ["paris", "toulouse", "marseille", "lyon"].find(x => message.toLowerCase().includes(x))) {
-                afficherCarte = true; villeCarte = ["paris", "toulouse", "marseille", "lyon"].find(x => message.toLowerCase().includes(x));
+            if (prat) {
+                const v = ["paris", "toulouse", "marseille", "lyon"].find(x => message.toLowerCase().includes(x));
+                if (v) { afficherCarte = true; villeCarte = v; }
             }
         }
 
         const response = await client.responses.create({
             model: "gpt-5",
-            instructions: "Tu es HATIMEDIA, assistant médical (tu ne poses pas de diagnostic). " + contexteInstruction + "\nTermine toujours par un rappel de prudence. Réponds naturellement.",
+            instructions: "Tu es HATIMEDIA. " + contexteInstruction + "\nTermine par un rappel de prudence si c'est médical.",
             input: historique.rows.slice(-6).map(m => ({ role: m.role, content: m.content }))
         });
+        
         const reply = response.output_text;
-        let cleanReply = reply;
 
-        const matchMake = reply.match(/\[MAKE_RDV:\s*(\{.*?\})\s*\]/s);
-        if (matchMake) {
-            cleanReply = reply.replace(matchMake[0], "").trim();
-            if (process.env.MAKE_WEBHOOK_URL) {
-                fetch(process.env.MAKE_WEBHOOK_URL, { method: "POST", headers: { "Content-Type": "application/json" }, body: matchMake[1] }).catch(() => {});
-            }
+        // EXTRACTION FORCÉE POUR GOOGLE CALENDAR
+        if (isRdv) {
+            try {
+                const histStr = historique.rows.map(m => m.content).join("\n");
+                if (histStr.toLowerCase().includes("paris") || histStr.toLowerCase().includes("toulouse") || histStr.toLowerCase().includes("gmail.com")) {
+                    const extractRes = await client.responses.create({
+                        model: "gpt-5",
+                        instructions: 'Extrais le nom, l\'email, la spécialité et la ville depuis le texte. Réponds UNIQUEMENT en JSON valide: {"nom":"...", "email":"...", "specialite":"...", "ville":"..."}',
+                        input: histStr
+                    });
+                    const rdvData = JSON.parse(extractRes.output_text.replace(/```json/g, '').replace(/```/g, '').trim());
+                    
+                    if (rdvData.nom && rdvData.email && rdvData.ville) {
+                        if (process.env.MAKE_WEBHOOK_URL) {
+                            fetch(process.env.MAKE_WEBHOOK_URL, { 
+                                method: "POST", 
+                                headers: { "Content-Type": "application/json" }, 
+                                body: JSON.stringify(rdvData) 
+                            }).then(() => console.log("✅ RDV envoyé à Google Calendar"))
+                              .catch(err => console.error("❌ Erreur Google Calendar:", err));
+                        }
+                    }
+                }
+            } catch (e) { console.error("Erreur extraction RDV:", e); }
         }
 
-        const insertedMsg = await pool.query(`INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id`, [conversationId, "assistant", cleanReply]);
+        const insertedMsg = await pool.query(`INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3) RETURNING id`, [conversationId, "assistant", reply]);
         
-        envoyerNotificationDiscord(message, cleanReply, sessionId).catch(() => {});
-        envoyerNotification(message, cleanReply, sessionId, estQuestionOrdonnance(message) ? "ordonnance" : "message").catch(() => {});
+        envoyerNotificationDiscord(message, reply, sessionId).catch(() => {});
+        envoyerNotification(message, reply, sessionId, estQuestionOrdonnance(message) ? "ordonnance" : "message").catch(() => {});
 
-        res.json({ ok: true, reply: cleanReply, conversationId, messageId: insertedMsg.rows[0].id, carte: afficherCarte ? villeCarte : null });
-    } catch (error) { res.status(500).json({ ok: false, error: "Erreur serveur." }); }
+        res.json({ ok: true, reply: reply, conversationId, messageId: insertedMsg.rows[0].id, carte: afficherCarte ? villeCarte : null });
+    } catch (error) { 
+        console.error(error);
+        res.status(500).json({ ok: false, error: "Erreur serveur." }); 
+    }
 });
 
 app.get("/api/chat-public/historique/:sessionId", async (req, res) => { try { const userId = await getOrCreateAnonymousUser(req.params.sessionId); const conv = await pool.query(`SELECT id FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [userId]); if (!conv.rows.length) return res.json({ ok: true, messages: [] }); const msgs = await pool.query(`SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [conv.rows[0].id]); res.json({ ok: true, conversationId: conv.rows[0].id, messages: msgs.rows }); } catch (e) { res.status(500).json({ ok: false }); } });
