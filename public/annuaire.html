@@ -19,12 +19,23 @@
         .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
         .search-bar input, .search-bar select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; flex: 1; }
         .search-bar button { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
-        .doctor-card { border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 15px; transition: 0.2s; cursor: pointer; }
-        .doctor-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .doctor-card { border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 15px; transition: 0.2s; }
+        .doctor-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
         .doctor-card h3 { font-size: 16px; color: #1e293b; margin-bottom: 5px; }
         .doctor-card p { font-size: 13px; color: #64748b; margin-bottom: 3px; }
         .doctor-card .specialty { color: #2563eb; font-weight: bold; }
-        .doctor-card .btn-rdv { display: inline-block; margin-top: 10px; background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; }
+        .btn-rdv { display: inline-block; margin-top: 10px; background: #10b981; color: white; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; border: none; cursor: pointer; width: 100%; }
+        .btn-rdv:hover { background: #059669; }
+        
+        /* Fenêtre Modale */
+        #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
+        .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
+        .modal-content h2 { font-size: 18px; margin-bottom: 15px; color: #1e293b; }
+        .modal-content p { font-size: 13px; color: #64748b; margin-bottom: 15px; }
+        .modal-content input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .modal-content button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
+        .modal-content button:hover { background: #1d4ed8; }
+        .close-btn { float: right; cursor: pointer; font-weight: bold; font-size: 20px; color: #999; }
     </style>
 </head>
 <body>
@@ -40,17 +51,27 @@
                     <option value="cardio">Cardiologue</option>
                     <option value="dermato">Dermatologue</option>
                     <option value="ophtalmo">Ophtalmologue</option>
-                    <option value="pediatre">Pédiatre</option>
                 </select>
                 <input id="ville" type="text" placeholder="Ville (ex: Paris)" value="Paris">
                 <button onclick="rechercher()">Chercher</button>
             </div>
-            <div id="results">
-                <p style="text-align:center; color:#999;">Lancez une recherche pour trouver des praticiens...</p>
-            </div>
+            <div id="results"></div>
         </div>
         <div class="map-container">
             <div id="map"></div>
+        </div>
+    </div>
+
+    <!-- Fenêtre Modale -->
+    <div id="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="fermerModal()">&times;</span>
+            <h2>Prendre rendez-vous</h2>
+            <p id="doctor-info"></p>
+            <input type="text" id="patient_name" placeholder="Votre nom complet">
+            <input type="email" id="patient_email" placeholder="Votre email">
+            <input type="datetime-local" id="rdv_date">
+            <button onclick="validerRdv()">Confirmer le RDV</button>
         </div>
     </div>
 
@@ -58,22 +79,20 @@
         var map = L.map('map').setView([46.603354, 1.888334], 6);
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
         var markers = [];
+        var currentDoctor = null;
 
         async function rechercher() {
             const specialite = document.getElementById('specialite').value;
             const ville = document.getElementById('ville').value;
             const resultsDiv = document.getElementById('results');
             
-            resultsDiv.innerHTML = '<p style="text-align:center;">Recherche en cours...</p>';
-            
-            // Nettoyer les anciens marqueurs
+            resultsDiv.innerHTML = '<p style="text-align:center; color:#999;">Recherche en cours...</p>';
             markers.forEach(m => map.removeLayer(m));
             markers = [];
 
             try {
                 const res = await fetch(`/api/annuaire?specialite=${specialite}&ville=${ville}`);
                 const data = await res.json();
-                
                 resultsDiv.innerHTML = '';
                 
                 if (!data.praticiens || data.praticiens.length === 0) {
@@ -81,34 +100,30 @@
                     return;
                 }
 
-                data.praticiens.forEach((p, index) => {
-                    // Afficher la carte
+                data.praticiens.forEach((p) => {
                     const card = document.createElement('div');
                     card.className = 'doctor-card';
+                    
+                    const safeNom = (p.nom || 'Praticien').replace(/'/g, "\\'");
+                    const safeSpec = (p.specialite || 'Spécialité').replace(/'/g, "\\'");
+                    const safeAdresse = (p.adresse || 'Adresse non renseignée').replace(/'/g, "\\'");
+                    const safeTel = (p.telephone || 'Téléphone non renseigné').replace(/'/g, "\\'");
+
                     card.innerHTML = `
                         <h3>${p.civilite || ''} ${p.nom || 'Praticien'}</h3>
                         <p class="specialty">${p.specialite || 'Spécialité'}</p>
                         <p>📍 ${p.adresse || 'Adresse non renseignée'}</p>
                         <p>📞 ${p.telephone || 'Téléphone non renseigné'}</p>
-                        <a href="/chat?rdv=${encodeURIComponent(p.nom)}" class="btn-rdv">Prendre RDV</a>
+                        <button class="btn-rdv" onclick="ouvrirModal('${safeNom}', '${safeSpec}', '${safeAdresse}', '${safeTel}')">Prendre RDV</button>
                     `;
-                    card.onclick = function() {
-                        if (p.adresse) {
-                            // On centre la carte sur le médecin (approx)
-                            map.setView([48.8566, 2.3522], 12); // Centre Paris par défaut pour l'exemple
-                        }
-                    };
                     resultsDiv.appendChild(card);
 
-                    // Ajouter un marqueur sur la carte (position aléatoire autour du centre pour l'exemple)
                     const lat = 48.8566 + (Math.random() - 0.5) * 0.05;
                     const lng = 2.3522 + (Math.random() - 0.5) * 0.05;
-                    const marker = L.marker([lat, lng]).addTo(map)
-                        .bindPopup(`<b>${p.nom}</b><br>${p.specialite}<br>${p.adresse}`);
+                    const marker = L.marker([lat, lng]).addTo(map).bindPopup(`<b>${p.nom}</b><br>${p.specialite}`);
                     markers.push(marker);
                 });
 
-                // Centrer la carte sur la ville recherchée
                 if (ville.toLowerCase() === 'paris') map.setView([48.8566, 2.3522], 12);
                 else if (ville.toLowerCase() === 'toulouse') map.setView([43.6047, 1.4442], 12);
                 else if (ville.toLowerCase() === 'marseille') map.setView([43.2965, 5.3698], 12);
@@ -116,10 +131,55 @@
 
             } catch (e) {
                 resultsDiv.innerHTML = '<p style="color:red; text-align:center;">Erreur de connexion.</p>';
+                console.error(e);
             }
         }
-        
-        // Lancer une recherche par défaut au chargement
+
+        function ouvrirModal(nom, spec, adresse, tel) {
+            currentDoctor = { nom, spec, adresse, tel };
+            document.getElementById('doctor-info').innerHTML = `<b>Avec ${nom}</b><br>${spec}<br>📍 ${adresse}`;
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function fermerModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        async function validerRdv() {
+            const name = document.getElementById('patient_name').value;
+            const email = document.getElementById('patient_email').value;
+            const date = document.getElementById('rdv_date').value;
+
+            if (!name || !email || !date) {
+                alert("Remplissez tous les champs (nom, email, date).");
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/rdv/reserver', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        doctor_name: currentDoctor.nom,
+                        doctor_specialty: currentDoctor.spec,
+                        doctor_address: currentDoctor.adresse,
+                        patient_name: name,
+                        patient_email: email,
+                        date: date
+                    })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    alert("✅ Rendez-vous confirmé et enregistré pour le médecin !");
+                    fermerModal();
+                } else {
+                    alert("Erreur: " + data.error);
+                }
+            } catch (e) {
+                alert("Erreur de connexion au serveur.");
+            }
+        }
+
         rechercher();
     </script>
 </body>
