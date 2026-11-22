@@ -215,5 +215,35 @@ app.post("/api/react", async (req, res) => { try { const { messageId, reaction, 
 app.get("/api/reactions/:messageId", async (req, res) => { try { const r = await pool.query(`SELECT reaction_type, session_id FROM reactions WHERE message_id = $1`, [req.params.messageId]); const c = {}; r.rows.forEach(x => c[x.reaction_type] = (c[x.reaction_type] || 0) + 1); res.json({ ok: true, reactions: c }); } catch (e) { res.status(500).json({ ok: false }); } });
 app.post("/webhook-whatsapp", async (req, res) => { res.sendStatus(200); /* Logique WhatsApp simplifiée */ });
 
+// ========================================
+// ANNUAIRE SANTÉ (Page + API)
+// ========================================
+
+app.get("/annuaire", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "annuaire.html"));
+});
+
+app.get("/api/annuaire", async (req, res) => {
+    try {
+        const specialite = req.query.specialite || "generaliste";
+        const ville = req.query.ville || "paris";
+        
+        // On utilise la fonction qui marche déjà dans medical.js
+        const resultat = await chercherPraticien(specialite, ville);
+        
+        let praticiens = [];
+        if (resultat) {
+            try {
+                const parsed = JSON.parse(resultat);
+                praticiens = parsed.praticiens || [];
+            } catch(e) {}
+        }
+        
+        res.json({ ok: true, praticiens });
+    } catch (error) {
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
