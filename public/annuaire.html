@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HATIMEDIA - Annuaire Santé</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #f4f7f6; color: #333; }
+        .header { background: #0f172a; color: white; padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { font-size: 20px; }
+        .header a { color: #fff; text-decoration: none; background: #2563eb; padding: 8px 16px; border-radius: 8px; font-weight: bold; }
+        .container { display: flex; height: calc(100vh - 60px); }
+        .sidebar { width: 40%; padding: 20px; overflow-y: auto; background: #fff; box-shadow: 2px 0 10px rgba(0,0,0,0.05); }
+        .map-container { width: 60%; position: relative; }
+        #map { width: 100%; height: 100%; }
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+        .search-bar input, .search-bar select { padding: 10px; border: 1px solid #ddd; border-radius: 8px; flex: 1; }
+        .search-bar button { background: #2563eb; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .doctor-card { border: 1px solid #eee; padding: 15px; border-radius: 12px; margin-bottom: 15px; transition: 0.2s; cursor: pointer; }
+        .doctor-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.1); transform: translateY(-2px); }
+        .doctor-card h3 { font-size: 16px; color: #1e293b; margin-bottom: 5px; }
+        .doctor-card p { font-size: 13px; color: #64748b; margin-bottom: 3px; }
+        .doctor-card .specialty { color: #2563eb; font-weight: bold; }
+        .doctor-card .btn-rdv { display: inline-block; margin-top: 10px; background: #10b981; color: white; padding: 6px 12px; border-radius: 6px; text-decoration: none; font-size: 12px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🩺 Annuaire Santé HATIMEDIA</h1>
+        <a href="/chat">← Retour au Chat</a>
+    </div>
+    <div class="container">
+        <div class="sidebar">
+            <div class="search-bar">
+                <select id="specialite">
+                    <option value="generaliste">Généraliste</option>
+                    <option value="cardio">Cardiologue</option>
+                    <option value="dermato">Dermatologue</option>
+                    <option value="ophtalmo">Ophtalmologue</option>
+                    <option value="pediatre">Pédiatre</option>
+                </select>
+                <input id="ville" type="text" placeholder="Ville (ex: Paris)" value="Paris">
+                <button onclick="rechercher()">Chercher</button>
+            </div>
+            <div id="results">
+                <p style="text-align:center; color:#999;">Lancez une recherche pour trouver des praticiens...</p>
+            </div>
+        </div>
+        <div class="map-container">
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script>
+        var map = L.map('map').setView([46.603354, 1.888334], 6);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(map);
+        var markers = [];
+
+        async function rechercher() {
+            const specialite = document.getElementById('specialite').value;
+            const ville = document.getElementById('ville').value;
+            const resultsDiv = document.getElementById('results');
+            
+            resultsDiv.innerHTML = '<p style="text-align:center;">Recherche en cours...</p>';
+            
+            // Nettoyer les anciens marqueurs
+            markers.forEach(m => map.removeLayer(m));
+            markers = [];
+
+            try {
+                const res = await fetch(`/api/annuaire?specialite=${specialite}&ville=${ville}`);
+                const data = await res.json();
+                
+                resultsDiv.innerHTML = '';
+                
+                if (!data.praticiens || data.praticiens.length === 0) {
+                    resultsDiv.innerHTML = '<p style="text-align:center;">Aucun praticien trouvé.</p>';
+                    return;
+                }
+
+                data.praticiens.forEach((p, index) => {
+                    // Afficher la carte
+                    const card = document.createElement('div');
+                    card.className = 'doctor-card';
+                    card.innerHTML = `
+                        <h3>${p.civilite || ''} ${p.nom || 'Praticien'}</h3>
+                        <p class="specialty">${p.specialite || 'Spécialité'}</p>
+                        <p>📍 ${p.adresse || 'Adresse non renseignée'}</p>
+                        <p>📞 ${p.telephone || 'Téléphone non renseigné'}</p>
+                        <a href="/chat?rdv=${encodeURIComponent(p.nom)}" class="btn-rdv">Prendre RDV</a>
+                    `;
+                    card.onclick = function() {
+                        if (p.adresse) {
+                            // On centre la carte sur le médecin (approx)
+                            map.setView([48.8566, 2.3522], 12); // Centre Paris par défaut pour l'exemple
+                        }
+                    };
+                    resultsDiv.appendChild(card);
+
+                    // Ajouter un marqueur sur la carte (position aléatoire autour du centre pour l'exemple)
+                    const lat = 48.8566 + (Math.random() - 0.5) * 0.05;
+                    const lng = 2.3522 + (Math.random() - 0.5) * 0.05;
+                    const marker = L.marker([lat, lng]).addTo(map)
+                        .bindPopup(`<b>${p.nom}</b><br>${p.specialite}<br>${p.adresse}`);
+                    markers.push(marker);
+                });
+
+                // Centrer la carte sur la ville recherchée
+                if (ville.toLowerCase() === 'paris') map.setView([48.8566, 2.3522], 12);
+                else if (ville.toLowerCase() === 'toulouse') map.setView([43.6047, 1.4442], 12);
+                else if (ville.toLowerCase() === 'marseille') map.setView([43.2965, 5.3698], 12);
+                else map.setView([46.603354, 1.888334], 6);
+
+            } catch (e) {
+                resultsDiv.innerHTML = '<p style="color:red; text-align:center;">Erreur de connexion.</p>';
+            }
+        }
+        
+        // Lancer une recherche par défaut au chargement
+        rechercher();
+    </script>
+</body>
+</html>
