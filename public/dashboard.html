@@ -3,67 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HATIMEDIA - Tableau de Bord Médecin</title>
+    <title>HATIMEDIA - Espace Médecin</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f7f6; color: #333; padding: 20px; }
         .header { text-align: center; margin-bottom: 30px; }
         .header h1 { color: #2563eb; font-size: 28px; }
-        .header p { color: #64748b; font-size: 14px; }
-        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
-        .card { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid #2563eb; }
-        .card-header { display: flex; justify-content: space-between; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 10px; }
-        .card-date { font-size: 12px; color: #94a3b8; }
-        .card-content { font-size: 14px; line-height: 1.6; white-space: pre-wrap; }
-        .loading { text-align: center; font-size: 18px; color: #2563eb; margin-top: 50px; }
+        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .panel { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .panel h2 { font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        .card { background: #f9fafb; border-left: 4px solid #10b981; padding: 15px; margin-bottom: 10px; border-radius: 6px; }
+        .card h3 { font-size: 15px; color: #1e293b; margin-bottom: 5px; }
+        .card p { font-size: 13px; color: #64748b; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🩺 Espace Médecin - HATIMEDIA</h1>
-        <p>Bilans de pré-consultation récents</p>
+        <p>Vos rendez-vous et bilans de pré-consultation</p>
     </div>
-    <div id="dashboard" class="container">
-        <div class="loading">Chargement des dossiers...</div>
+    
+    <div class="container">
+        <div class="panel">
+            <h2>📅 Rendez-vous confirmés</h2>
+            <div id="rdv-list"></div>
+        </div>
+        <div class="panel">
+            <h2>📋 Bilans de Pré-Consultation</h2>
+            <div id="bilans-list"></div>
+        </div>
     </div>
 
     <script>
-        async function chargerBilans() {
+        async function chargerRdv() {
             try {
-                const response = await fetch('/api/dashboard/pre-consultations');
-                const data = await response.json();
+                const res = await fetch('/api/rdv/liste');
+                const data = await res.json();
+                const container = document.getElementById('rdv-list');
                 
-                const container = document.getElementById('dashboard');
-                container.innerHTML = '';
-
-                if (!data.ok || data.bilans.length === 0) {
-                    container.innerHTML = '<p style="text-align:center; width:100%;">Aucun bilan de pré-consultation pour le moment.</p>';
+                if (!data.ok || data.rdvs.length === 0) {
+                    container.innerHTML = '<p style="color:#999;">Aucun rendez-vous pour le moment.</p>';
                     return;
                 }
 
-                data.bilans.forEach(bilan => {
-                    const date = new Date(bilan.date).toLocaleString("fr-FR", { timeZone: "Europe/Paris" });
-                    
-                    // Nettoyer le texte pour enlever le "📋 Compte-rendu..." du début
-                    let textePropre = bilan.contenu.replace("📋 **Compte-rendu de pré-consultation**", "").trim();
-
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <strong>Patient (Session: ${bilan.sessionId.substring(0, 8)}...)</strong>
-                            <span class="card-date">${date}</span>
+                data.rdvs.forEach(r => {
+                    const date = new Date(r.appointment_date).toLocaleString("fr-FR");
+                    container.innerHTML += `
+                        <div class="card">
+                            <h3>${r.patient_name} (${r.patient_email})</h3>
+                            <p><strong>Avec :</strong> ${r.doctor_name} - ${r.doctor_specialty}</p>
+                            <p><strong>Date :</strong> ${date}</p>
+                            <p>📍 ${r.doctor_address}</p>
                         </div>
-                        <div class="card-content">${textePropre}</div>
                     `;
-                    container.appendChild(card);
                 });
-            } catch (error) {
-                console.error("Erreur chargement dashboard:", error);
-                document.getElementById('dashboard').innerHTML = '<p style="color:red; text-align:center;">Erreur de chargement.</p>';
-            }
+            } catch (e) { console.error(e); }
         }
 
+        async function chargerBilans() {
+            try {
+                const res = await fetch('/api/dashboard/pre-consultations');
+                const data = await res.json();
+                const container = document.getElementById('bilans-list');
+                
+                if (!data.ok || data.bilans.length === 0) {
+                    container.innerHTML = '<p style="color:#999;">Aucun bilan pour le moment.</p>';
+                    return;
+                }
+
+                data.bilans.forEach(b => {
+                    const date = new Date(b.date).toLocaleString("fr-FR");
+                    let texte = b.contenu.replace("📋 **Compte-rendu de pré-consultation**", "").trim();
+                    container.innerHTML += `
+                        <div class="card" style="border-left-color: #2563eb;">
+                            <h3>Patient (Session: ${b.sessionId.substring(0,8)}...)</h3>
+                            <p style="font-size:11px; margin-bottom:10px;">${date}</p>
+                            <div style="white-space: pre-wrap; font-size:13px; line-height:1.5;">${texte}</div>
+                        </div>
+                    `;
+                });
+            } catch (e) { console.error(e); }
+        }
+
+        chargerRdv();
         chargerBilans();
     </script>
 </body>
