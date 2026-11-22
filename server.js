@@ -245,5 +245,34 @@ app.get("/api/annuaire", async (req, res) => {
     }
 });
 
+// ========================================
+// RENDEZ-VOUS (Annuaire -> Dashboard)
+// ========================================
+
+app.post("/api/rdv/reserver", async (req, res) => {
+    try {
+        const { doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, date } = req.body;
+        await pool.query(
+            `INSERT INTO appointments (doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, appointment_date)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, date]
+        );
+        res.json({ ok: true, message: "Rendez-vous enregistré !" });
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ ok: false, error: e.message }); 
+    }
+});
+
+app.get("/api/rdv/liste", async (req, res) => {
+    try {
+        const result = await pool.query(`SELECT * FROM appointments ORDER BY appointment_date ASC`);
+        res.json({ ok: true, rdvs: result.rows });
+    } catch (e) { 
+        res.status(500).json({ ok: false, error: e.message }); 
+    }
+});
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
