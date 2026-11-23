@@ -252,11 +252,31 @@ app.get("/api/annuaire", async (req, res) => {
 app.post("/api/rdv/reserver", async (req, res) => {
     try {
         const { doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, date } = req.body;
+        
         await pool.query(
             `INSERT INTO appointments (doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, appointment_date)
              VALUES ($1, $2, $3, $4, $5, $6)`,
             [doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, date]
         );
+
+        // Envoi de l'email au médecin (Option B)
+        try {
+            const { Resend } = require("resend");
+            const resend = new Resend(process.env.RESEND_API_KEY);
+            await resend.emails.send({
+                from: "HATIMEDIA <onboarding@resend.dev>",
+                to: "hatimedia31@gmail.com", // Votre email de médecin ici
+                subject: `🚨 Nouveau RDV : ${patient_name}`,
+                html: `<h3>Nouveau rendez-vous pris</h3>
+                       <p><b>Patient :</b> ${patient_name} (${patient_email})</p>
+                       <p><b>Date :</b> ${new Date(date).toLocaleString('fr-FR')}</p>
+                       <p><b>Avec :</b> ${doctor_name} (${doctor_specialty})</p>`
+            });
+        } catch (mailErr) { console.error("Erreur email médecin:", mailErr); }
+
+        // Notification Discord
+        envoyerNotificationDiscord(`📅 RDV: ${patient_name} - ${date}`, "Annuaire", "rdv").catch(() => {});
+
         res.json({ ok: true, message: "Rendez-vous enregistré !" });
     } catch (e) { 
         console.error(e);
