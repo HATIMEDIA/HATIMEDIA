@@ -27,12 +27,11 @@
         .btn-rdv { display: inline-block; margin-top: 10px; background: #10b981; color: white; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: bold; border: none; cursor: pointer; width: 100%; }
         .btn-rdv:hover { background: #059669; }
         
-        /* Fenêtre Modale */
         #modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 1000; justify-content: center; align-items: center; }
         .modal-content { background: #fff; padding: 25px; border-radius: 12px; width: 90%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); }
         .modal-content h2 { font-size: 18px; margin-bottom: 15px; color: #1e293b; }
         .modal-content p { font-size: 13px; color: #64748b; margin-bottom: 15px; }
-        .modal-content input { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
+        .modal-content input, .modal-content select { width: 100%; padding: 12px; margin-bottom: 12px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
         .modal-content button { width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 15px; }
         .modal-content button:hover { background: #1d4ed8; }
         .close-btn { float: right; cursor: pointer; font-weight: bold; font-size: 20px; color: #999; }
@@ -62,7 +61,6 @@
         </div>
     </div>
 
-    <!-- Fenêtre Modale -->
     <div id="modal">
         <div class="modal-content">
             <span class="close-btn" onclick="fermerModal()">&times;</span>
@@ -70,7 +68,16 @@
             <p id="doctor-info"></p>
             <input type="text" id="patient_name" placeholder="Votre nom complet">
             <input type="email" id="patient_email" placeholder="Votre email">
-            <input type="datetime-local" id="rdv_date">
+            <!-- SÉLECTEUR DE CRÉNEAUX -->
+            <select id="rdv_date">
+                <option value="">Choisir un créneau...</option>
+                <option value="2026-11-24T09:00:00">Demain - 09:00</option>
+                <option value="2026-11-24T10:00:00">Demain - 10:00</option>
+                <option value="2026-11-24T11:00:00">Demain - 11:00</option>
+                <option value="2026-11-24T14:00:00">Demain - 14:00</option>
+                <option value="2026-11-24T15:00:00">Demain - 15:00</option>
+                <option value="2026-11-24T16:00:00">Demain - 16:00</option>
+            </select>
             <button onclick="validerRdv()">Confirmer le RDV</button>
         </div>
     </div>
@@ -151,7 +158,7 @@
             const date = document.getElementById('rdv_date').value;
 
             if (!name || !email || !date) {
-                alert("Remplissez tous les champs (nom, email, date).");
+                alert("Remplissez tous les champs (nom, email, créneau).");
                 return;
             }
 
@@ -170,7 +177,7 @@
                 });
                 const data = await res.json();
                 if (data.ok) {
-                    alert("✅ Rendez-vous confirmé et enregistré pour le médecin !");
+                    alert("✅ Rendez-vous confirmé !");
                     fermerModal();
                 } else {
                     alert("Erreur: " + data.error);
