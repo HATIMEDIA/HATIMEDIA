@@ -277,6 +277,14 @@ app.get("/mes-rdvs", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "mes-rdvs.html"));
 });
 
+app.delete("/api/rdv/annuler/:id", async (req, res) => {
+    try {
+        const result = await pool.query(`DELETE FROM appointments WHERE id = $1 RETURNING id`, [req.params.id]);
+        if (result.rows.length === 0) return res.status(404).json({ ok: false, error: "RDV introuvable" });
+        res.json({ ok: true });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
