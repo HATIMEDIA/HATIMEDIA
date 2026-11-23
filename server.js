@@ -305,6 +305,10 @@ app.delete("/api/rdv/annuler/:id", async (req, res) => {
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+app.get("/", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "index.html"));
+});
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
