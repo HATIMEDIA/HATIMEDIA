@@ -24,13 +24,10 @@
     </div>
     
     <div class="container">
-        <!-- Rendez-vous pris via l'annuaire -->
         <div class="panel">
             <h2>📅 Rendez-vous confirmés</h2>
             <div id="rdv-list"></div>
         </div>
-
-        <!-- Bilans de pré-consultation -->
         <div class="panel">
             <h2>📋 Bilans de Pré-Consultation</h2>
             <div id="bilans-list"></div>
@@ -49,6 +46,7 @@
                     return;
                 }
 
+                container.innerHTML = '';
                 data.rdvs.forEach(r => {
                     const date = new Date(r.appointment_date).toLocaleString("fr-FR");
                     container.innerHTML += `
@@ -57,10 +55,23 @@
                             <p><strong>Avec :</strong> ${r.doctor_name} - ${r.doctor_specialty}</p>
                             <p><strong>Date :</strong> ${date}</p>
                             <p>📍 ${r.doctor_address}</p>
+                            <button onclick="annulerRdv(${r.id})" style="margin-top: 10px; background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">Annuler</button>
                         </div>
                     `;
                 });
             } catch (e) { console.error(e); }
+        }
+
+        async function annulerRdv(id) {
+            if (!confirm("Annuler ce rendez-vous ?")) return;
+            try {
+                const res = await fetch(`/api/rdv/annuler/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.ok) {
+                    alert("✅ RDV annulé.");
+                    chargerRdv(); // Recharge la liste
+                }
+            } catch (e) { alert("Erreur."); }
         }
 
         async function chargerBilans() {
@@ -74,6 +85,7 @@
                     return;
                 }
 
+                container.innerHTML = '';
                 data.bilans.forEach(b => {
                     const date = new Date(b.date).toLocaleString("fr-FR");
                     let texte = b.contenu.replace("📋 **Compte-rendu de pré-consultation**", "").trim();
