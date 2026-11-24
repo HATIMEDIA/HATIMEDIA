@@ -313,6 +313,17 @@ app.get("/", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "index.html"));
 });
 
+app.get("/api/patient/rdvs", async (req, res) => {
+    try {
+        const { email } = req.query;
+        if (!email) return res.status(400).json({ ok: false, error: "Email requis" });
+        const result = await pool.query(`SELECT * FROM appointments WHERE patient_email = $1 ORDER BY appointment_date ASC`, [email]);
+        res.json({ ok: true, rdvs: result.rows });
+    } catch (e) { 
+        console.error("Erreur DB:", e);
+        res.status(500).json({ ok: false, error: e.message }); 
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
