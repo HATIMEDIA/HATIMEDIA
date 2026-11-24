@@ -315,6 +315,18 @@ app.get("/hub", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "hub.html"));
 });
 
+app.get("/api/chat-public/conversations/:sessionId", async (req, res) => {
+    try {
+        const userId = await getOrCreateAnonymousUser(req.params.sessionId);
+        const result = await pool.query(
+            `SELECT id, title, created_at FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 20`,
+            [userId]
+        );
+        res.json({ ok: true, conversations: result.rows });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
