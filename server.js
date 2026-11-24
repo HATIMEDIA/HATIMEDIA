@@ -45,6 +45,8 @@ app.post("/api/chat-public", async (req, res) => {
         const message = (req.body.message || "").trim();
         const sessionId = req.body.sessionId;
         const conversationIdRecu = req.body.conversationId || null;
+        const agent = req.body.agent || "general"; // <-- L'AGENT EST ICI
+
         if (!message || !sessionId) return res.status(400).json({ ok: false, error: "Paramètres manquants." });
 
         const userId = await getOrCreateAnonymousUser(sessionId);
@@ -57,9 +59,21 @@ app.post("/api/chat-public", async (req, res) => {
         await pool.query(`INSERT INTO messages (conversation_id, role, content) VALUES ($1, $2, $3)`, [conversationId, "user", message]);
         const historique = await pool.query(`SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [conversationId]);
 
+        // --- 1. GESTION DES AGENTS (HUB) ---
+        let promptAgent = "";
+        if (agent === "medical") {
+            promptAgent = "Tu es un assistant médical strict. Tu ne poses pas de diagnostic. Tu aides à la pré-consultation et donnes des conseils de prudence.";
+        } else if (agent === "support") {
+            promptAgent = "Tu es un agent de support client. Tu es poli, efficace, et tu aides à résoudre les problèmes.";
+        } else if (agent === "code") {
+            promptAgent = "Tu es un expert en développement web. Tu réponds uniquement avec du code ou des explications techniques.";
+        } else {
+            promptAgent = "Tu es un assistant généraliste amical et serviable.";
+        }
+
         let contexteInstruction = "", afficherCarte = false, villeCarte = "";
         
-        // DÉTECTION DU MODE RDV
+        // 2. DÉTECTION DU MODE RDV
         const isRdv = estQuestionRendezVous(message) || historique.rows.some(m => m.content.includes("RDV") || m.content.includes("rendez-vous"));
 
         if (isRdv) {
@@ -93,13 +107,13 @@ app.post("/api/chat-public", async (req, res) => {
 
         const response = await client.responses.create({
             model: "gpt-5",
-            instructions: "Tu es HATIMEDIA. " + contexteInstruction + "\nTermine par un rappel de prudence si c'est médical.",
+            instructions: promptAgent + "\n" + contexteInstruction + "\nTermine par un rappel de prudence si c'est médical.",
             input: historique.rows.slice(-6).map(m => ({ role: m.role, content: m.content }))
         });
         
         const reply = response.output_text;
 
-        // EXTRACTION FORCÉE POUR GOOGLE CALENDAR
+        // --- 3. EXTRACTION FORCÉE POUR LA BASE DE DONNÉES (Remplace Google Calendar) ---
         if (isRdv) {
             try {
                 const histStr = historique.rows.map(m => m.content).join("\n");
@@ -112,14 +126,14 @@ app.post("/api/chat-public", async (req, res) => {
                     const rdvData = JSON.parse(extractRes.output_text.replace(/```json/g, '').replace(/```/g, '').trim());
                     
                     if (rdvData.nom && rdvData.email && rdvData.ville) {
-                        if (process.env.MAKE_WEBHOOK_URL) {
-                            fetch(process.env.MAKE_WEBHOOK_URL, { 
-                                method: "POST", 
-                                headers: { "Content-Type": "application/json" }, 
-                                body: JSON.stringify(rdvData) 
-                            }).then(() => console.log("✅ RDV envoyé à Google Calendar"))
-                              .catch(err => console.error("❌ Erreur Google Calendar:", err));
-                        }
+                        // On insère dans la base de données PostgreSQL !
+                        await pool.query(
+                            `INSERT INTO appointments (doctor_name, doctor_specialty, doctor_address, patient_name, patient_email, appointment_date)
+                             VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL '1 day')`,
+                            [rdvData.medecin || "Médecin généraliste", rdvData.specialite || "Généraliste", rdvData.ville || "Cabinet", rdvData.nom, rdvData.email]
+                        );
+                        console.log("✅ RDV sauvegardé dans la base de données");
+                        envoyerNotificationDiscord(`📅 Nouveau RDV (Chat) : ${rdvData.nom}`, "RDV", sessionId).catch(()=>{});
                     }
                 }
             } catch (e) { console.error("Erreur extraction RDV:", e); }
@@ -137,54 +151,26 @@ app.post("/api/chat-public", async (req, res) => {
     }
 });
 
-// ========================================
-// RECHERCHE AVANCÉE DE PRATICIENS (API FHIR ANS)
-// ========================================
-
+// Route de recherche avancée (on la garde)
 app.get("/api/praticien/recherche-avancee", async (req, res) => {
     try {
         const { specialite, ville } = req.query;
-        if (!specialite && !ville) {
-            return res.status(400).json({ ok: false, error: "Spécifiez une spécialité ou une ville." });
-        }
-
-        // L'API FHIR de l'ANS se trouve à cette adresse (exemple, à vérifier)
+        if (!specialite && !ville) return res.status(400).json({ ok: false, error: "Spécifiez une spécialité ou une ville." });
         const baseUrl = "https://interop.esante.gouv.fr/ig/fhir/annuaire";
-        
-        // On construit la requête pour chercher des praticiens
         let searchUrl = `${baseUrl}/Practitioner?`;
         if (specialite) searchUrl += `specialty=${encodeURIComponent(specialite)}&`;
         if (ville) searchUrl += `address-city=${encodeURIComponent(ville)}&`;
-        
-        // On demande les 10 premiers résultats
         searchUrl = searchUrl.slice(0, -1) + "&_count=10";
-
-        const response = await fetch(searchUrl, {
-            headers: { "Accept": "application/fhir+json" }
-        });
-
-        if (!response.ok) {
-            return res.status(response.status).json({ ok: false, error: "Erreur de l'API Annuaire Santé." });
-        }
-
+        const response = await fetch(searchUrl, { headers: { "Accept": "application/fhir+json" } });
+        if (!response.ok) return res.status(response.status).json({ ok: false, error: "Erreur de l'API Annuaire Santé." });
         const bundle = await response.json();
-        
-        // On formate les résultats pour le front-end
         const praticiens = (bundle.entry || []).map(item => {
             const p = item.resource;
-            const name = p.name?.[0]?.text || "Nom non renseigné";
-            const specialty = p.specialty?.[0]?.coding?.[0]?.display || "Spécialité inconnue";
-            const address = p.address?.[0]?.text || "Adresse non renseignée";
-            return { nom: name, specialite: specialty, adresse: address };
+            return { nom: p.name?.[0]?.text || "Nom inconnu", specialite: p.specialty?.[0]?.coding?.[0]?.display || "Inconnue", adresse: p.address?.[0]?.text || "Inconnue" };
         });
-
         res.json({ ok: true, praticiens });
-    } catch (error) {
-        console.error("❌ Erreur recherche avancée:", error);
-        res.status(500).json({ ok: false, error: "Erreur serveur." });
-    }
+    } catch (error) { res.status(500).json({ ok: false, error: "Erreur serveur." }); }
 });
-
 
 app.get("/api/chat-public/historique/:sessionId", async (req, res) => { try { const userId = await getOrCreateAnonymousUser(req.params.sessionId); const conv = await pool.query(`SELECT id FROM conversations WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`, [userId]); if (!conv.rows.length) return res.json({ ok: true, messages: [] }); const msgs = await pool.query(`SELECT role, content FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC`, [conv.rows[0].id]); res.json({ ok: true, conversationId: conv.rows[0].id, messages: msgs.rows }); } catch (e) { res.status(500).json({ ok: false }); } });
 
