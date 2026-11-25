@@ -10,7 +10,7 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #0f172a; color: #e2e8f0; height: 100dvh; display: flex; overflow: hidden; }
         
-        /* SIDEBAR (Menu de gauche) */
+        /* SIDEBAR */
         .sidebar { width: 260px; background: #020617; border-right: 1px solid #1e293b; display: flex; flex-direction: column; transition: transform 0.3s; }
         .sidebar-header { padding: 20px; border-bottom: 1px solid #1e293b; }
         .sidebar-header h1 { font-size: 18px; color: #4ade80; margin-bottom: 15px; }
@@ -24,41 +24,44 @@
         .sidebar-footer a { color: #94a3b8; text-decoration: none; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
         .sidebar-footer a:hover { color: #4ade80; }
 
-        /* MAIN CHAT (Zone de droite) */
+        /* MAIN CHAT */
         .main-chat { flex: 1; display: flex; flex-direction: column; background: #0f172a; position: relative; }
         .chat-header { padding: 15px 20px; border-bottom: 1px solid #1e293b; display: flex; align-items: center; justify-content: space-between; }
         .chat-header h2 { font-size: 16px; color: #fff; }
-        
+        .btn-voice { background: #1e293b; border: 1px solid #334155; color: #fff; padding: 8px 15px; border-radius: 20px; cursor: pointer; display: flex; align-items: center; gap: 5px; font-size: 13px; }
+        .btn-voice:hover { border-color: #4ade80; }
+        .btn-voice.active { background: #4ade80; color: #0f172a; border-color: #4ade80; }
+
         .chat-box { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
         .msg { max-width: 80%; padding: 12px 18px; border-radius: 16px; line-height: 1.5; font-size: 15px; white-space: pre-wrap; }
         .msg.user { align-self: flex-end; background: #2563eb; color: #fff; border-bottom-right-radius: 4px; }
         .msg.assistant { align-self: flex-start; background: #1e293b; color: #e2e8f0; border-bottom-left-radius: 4px; border: 1px solid #334155; }
         
-        .input-area { padding: 20px; background: #0f172a; border-top: 1px solid #1e293b; display: flex; gap: 10px; }
-        .input-area input { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #fff; outline: none; }
-        .input-area input:focus { border-color: #4ade80; }
-        .input-area button { background: #4ade80; color: #0f172a; border: none; padding: 0 20px; border-radius: 12px; cursor: pointer; font-size: 20px; }
+        .input-area { padding: 20px; background: #0f172a; border-top: 1px solid #1e293b; display: flex; gap: 10px; align-items: center; }
+        .input-area input[type="text"] { flex: 1; padding: 15px; border-radius: 12px; border: 1px solid #334155; background: #1e293b; color: #fff; outline: none; }
+        .input-area input[type="text"]:focus { border-color: #4ade80; }
         
+        .btn-icon { background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; padding: 0 5px; transition: 0.2s; display: flex; align-items: center; justify-content: center; }
+        .btn-icon:hover { color: #fff; transform: scale(1.1); }
+        .btn-icon.actif { color: #ef4444; animation: pulse 1s infinite; }
+        
+        .btn-send { background: #4ade80; color: #0f172a; border: none; padding: 0 20px; height: 50px; border-radius: 12px; cursor: pointer; font-size: 20px; font-weight: bold; transition: 0.2s; }
+        .btn-send:hover { background: #22c55e; }
+        .btn-send:disabled { background: #64748b; cursor: not-allowed; }
+
         .thinking { display: flex; gap: 5px; align-items: center; font-style: italic; color: #94a3b8; font-size: 13px; margin-top: 10px; }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .sidebar { position: absolute; height: 100%; z-index: 10; transform: translateX(-100%); }
-            .sidebar.open { transform: translateX(0); }
-        }
+
+        @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.2); } 100% { transform: scale(1); } }
     </style>
 </head>
 <body>
-
     <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
         <div class="sidebar-header">
             <h1>🤖 HATIMEDIA</h1>
             <button class="btn-new" onclick="nouvelleConversation()">+ Nouveau chat</button>
         </div>
-        <div class="history-list" id="historyList">
-            <!-- L'historique s'affichera ici -->
-        </div>
+        <div class="history-list" id="historyList"></div>
         <div class="sidebar-footer">
             <a href="/hub">🔄 Retour au Hub</a>
             <a href="/annuaire">🩺 Annuaire</a>
@@ -70,6 +73,7 @@
     <div class="main-chat">
         <div class="chat-header">
             <h2 id="currentAgentTitle">Assistant</h2>
+            <button class="btn-voice active" id="btnVoix" onclick="toggleVoix()">🔊 Audio ON</button>
         </div>
         
         <div class="chat-box" id="chatBox">
@@ -77,40 +81,120 @@
         </div>
 
         <div class="input-area">
+            <!-- BOUTON MICRO -->
+            <button class="btn-icon" id="btnParler" onclick="toggleParler()" title="Parler">🎙️</button>
+            
             <input type="text" id="messageInput" placeholder="Posez votre question..." onkeypress="if(event.key==='Enter') envoyerMessage()">
-            <button onclick="envoyerMessage()">➤</button>
+            
+            <!-- BOUTON TROMBONE -->
+            <input type="file" id="imageUpload" accept="image/*" style="display: none;" onchange="analyserImage(this)">
+            <button class="btn-icon" onclick="document.getElementById('imageUpload').click()" title="Envoyer une image">📎</button>
+            
+            <button class="btn-send" id="sendBtn" onclick="envoyerMessage()">➤</button>
         </div>
     </div>
 
     <script>
-        // GESTION DE L'AGENT
         const urlParams = new URLSearchParams(window.location.search);
         const agentActif = urlParams.get('agent') || 'general';
-        const titres = {
-            'medical': '🩺 Assistant Médical',
-            'support': '🎧 Support Client',
-            'code': '💻 Expert Code',
-            'general': '💬 Assistant Général'
-        };
+        const titres = { 'medical': '🩺 Assistant Médical', 'support': '🎧 Support Client', 'code': '💻 Expert Code', 'general': '💬 Assistant Général' };
         document.getElementById('currentAgentTitle').innerText = titres[agentActif] || 'Assistant';
 
-        // SESSION
         let sessionId = localStorage.getItem("hatimedia_session");
-        if (!sessionId) {
-            sessionId = "sess_" + Math.random().toString(36).substring(2);
-            localStorage.setItem("hatimedia_session", sessionId);
-        }
-        let conversationId = null;
-        let enCours = false;
+        if (!sessionId) { sessionId = "sess_" + Math.random().toString(36).substring(2); localStorage.setItem("hatimedia_session", sessionId); }
+        let conversationId = null, enCours = false;
+        
+        // GESTION DE LA VOIX
+        let voixActive = true;
+        let modeVocal = false;
+        let recognitionActive = null;
 
-        // CHARGER L'HISTORIQUE (Sidebar)
+        function toggleVoix() {
+            voixActive = !voixActive;
+            const btn = document.getElementById('btnVoix');
+            if (voixActive) {
+                btn.innerHTML = "🔊 Audio ON";
+                btn.classList.add('active');
+            } else {
+                btn.innerHTML = "🔇 Audio OFF";
+                btn.classList.remove('active');
+                if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+            }
+        }
+
+        function faireParler(texte, callback) {
+            if (!voixActive || !("speechSynthesis" in window)) { if (callback) callback(); return; }
+            window.speechSynthesis.cancel();
+            var voix = new SpeechSynthesisUtterance(texte);
+            var voixDisponibles = window.speechSynthesis.getVoices();
+            var voixFR = voixDisponibles.find(function (v) { return v.lang && v.lang.indexOf("fr") === 0; });
+            if (voixFR) voix.voice = voixFR;
+            voix.lang = "fr-FR"; voix.volume = 1; voix.rate = 1; voix.pitch = 1;
+            voix.onend = function () { if (callback) callback(); };
+            window.speechSynthesis.speak(voix);
+        }
+
+        function toggleParler() {
+            modeVocal = !modeVocal;
+            const btn = document.getElementById('btnParler');
+            if (modeVocal) {
+                btn.classList.add('actif');
+                demarrerEcoute();
+            } else {
+                btn.classList.remove('actif');
+                arreterEcoute();
+            }
+        }
+
+        function arreterEcoute() {
+            if (recognitionActive) { try { recognitionActive.abort(); } catch (e) {} recognitionActive = null; }
+            if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+            document.getElementById('messageInput').placeholder = "Posez votre question...";
+        }
+
+        function demarrerEcoute() {
+            var SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                alert("🎙️ La reconnaissance vocale n'est pas disponible dans ce navigateur.\nEssayez Chrome ou Safari.");
+                modeVocal = false; document.getElementById('btnParler').classList.remove('actif');
+                return;
+            }
+            if ("speechSynthesis" in window) window.speechSynthesis.cancel();
+            if (recognitionActive) { try { recognitionActive.abort(); } catch (e) {} recognitionActive = null; }
+            
+            setTimeout(function () {
+                if (!modeVocal) return;
+                var recognition = new SpeechRecognition();
+                recognitionActive = recognition;
+                recognition.lang = "fr-FR"; recognition.continuous = false; recognition.interimResults = false;
+                recognition.onstart = function () { document.getElementById('messageInput').placeholder = "🎙️ Je vous écoute..."; };
+                recognition.onresult = function (event) {
+                    var texte = event.results[0][0].transcript;
+                    document.getElementById('messageInput').value = texte;
+                    document.getElementById('messageInput').placeholder = "Posez votre question...";
+                    envoyerMessage();
+                };
+                recognition.onerror = function (event) {
+                    recognitionActive = null;
+                    if (event.error === "not-allowed") {
+                        alert("🎙️ Autorisez l'accès au micro dans votre navigateur.");
+                        modeVocal = false; document.getElementById('btnParler').classList.remove('actif');
+                    }
+                    if (event.error === "no-speech") { if (modeVocal) setTimeout(demarrerEcoute, 500); return; }
+                    if (event.error === "aborted") return;
+                    if (modeVocal) setTimeout(demarrerEcoute, 800);
+                };
+                recognition.onend = function () { recognitionActive = null; document.getElementById('messageInput').placeholder = "Posez votre question..."; };
+                try { recognition.start(); } catch (e) {}
+            }, 300);
+        }
+
         async function chargerHistorique() {
             try {
                 const res = await fetch(`/api/chat-public/conversations/${sessionId}`);
                 const data = await res.json();
                 const list = document.getElementById('historyList');
                 list.innerHTML = '';
-
                 if (data.ok && data.conversations.length > 0) {
                     data.conversations.forEach(c => {
                         const div = document.createElement('div');
@@ -121,23 +205,18 @@
                         list.appendChild(div);
                     });
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) {}
         }
 
-        // CHARGER UNE CONVERSATION EXISTANTE
         async function chargerConversation(id) {
             conversationId = id;
             document.getElementById('chatBox').innerHTML = '';
             const res = await fetch(`/api/chat-public/historique/${sessionId}`);
             const data = await res.json();
-            
-            if (data.ok && data.conversationId === id && data.messages) {
-                data.messages.forEach(m => ajouterMessage(m.content, m.role));
-            }
-            chargerHistorique(); // Rafraîchir la sidebar
+            if (data.ok && data.messages) { data.messages.forEach(m => ajouterMessage(m.content, m.role)); }
+            chargerHistorique();
         }
 
-        // AJOUTER UN MESSAGE
         function ajouterMessage(texte, role) {
             const chatBox = document.getElementById('chatBox');
             const div = document.createElement('div');
@@ -147,60 +226,86 @@
             chatBox.scrollTop = chatBox.scrollHeight;
         }
 
-        // ENVOYER UN MESSAGE
         async function envoyerMessage() {
             const input = document.getElementById('messageInput');
             const texte = input.value.trim();
             if (!texte || enCours) return;
-
-            enCours = true;
-            input.value = '';
+            enCours = true; input.value = '';
             ajouterMessage(texte, 'user');
 
-            // Indicateur de frappe
             const chatBox = document.getElementById('chatBox');
             const thinking = document.createElement('div');
             thinking.className = 'msg assistant thinking';
-            thinking.innerHTML = 'HATIMEDIA réfléchit...';
-            chatBox.appendChild(thinking);
-            chatBox.scrollTop = chatBox.scrollHeight;
+            thinking.innerText = 'HATIMEDIA réfléchit...';
+            chatBox.appendChild(thinking); chatBox.scrollTop = chatBox.scrollHeight;
 
             try {
                 const res = await fetch('/api/chat-public', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: texte,
-                        sessionId: sessionId,
-                        conversationId: conversationId,
-                        agent: agentActif // <-- L'AGENT EST ENVOYÉ ICI
-                    })
+                    body: JSON.stringify({ message: texte, sessionId: sessionId, conversationId: conversationId, agent: agentActif })
                 });
                 const data = await res.json();
-                
                 thinking.remove();
+                
                 if (data.ok) {
                     ajouterMessage(data.reply, 'assistant');
+                    
+                    if (data.carte) {
+                        const mapDiv = document.createElement('div');
+                        mapDiv.id = 'map-' + Date.now();
+                        mapDiv.style.height = '250px'; mapDiv.style.width = '100%'; mapDiv.style.marginTop = '10px'; mapDiv.style.borderRadius = '12px';
+                        chatBox.appendChild(mapDiv);
+                        var map = L.map(mapDiv.id).setView([46.603354, 1.888334], 6);
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
+                        if(data.carte === 'paris') map.setView([48.8566, 2.3522], 12);
+                    }
+                    
                     if (data.conversationId) conversationId = data.conversationId;
-                    chargerHistorique(); // Met à jour la sidebar avec le nouveau titre
-                } else {
-                    ajouterMessage("Erreur: " + data.error, 'assistant');
+                    chargerHistorique();
+                    
+                    // L'IA PARLE
+                    faireParler(data.reply, function () { if (modeVocal) setTimeout(demarrerEcoute, 300); });
+                    
+                } else { 
+                    ajouterMessage("Erreur: " + data.error, 'assistant'); 
+                    if (modeVocal) setTimeout(demarrerEcoute, 500);
                 }
-            } catch (e) {
-                thinking.remove();
-                ajouterMessage("Erreur de connexion.", 'assistant');
+            } catch (e) { 
+                thinking.remove(); 
+                ajouterMessage("Erreur de connexion.", 'assistant'); 
+                if (modeVocal) setTimeout(demarrerEcoute, 1000);
             }
             enCours = false;
         }
 
-        // NOUVELLE CONVERSATION
+        async function analyserImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = async (e) => {
+                    const base64 = e.target.result;
+                    ajouterMessage("📷 Analyse de l'image en cours...", 'user');
+                    try {
+                        const res = await fetch('/api/chat-vision', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ image: base64, message: "Analyse cette ordonnance." })
+                        });
+                        const data = await res.json();
+                        ajouterMessage(data.reply, 'assistant');
+                        faireParler(data.reply);
+                    } catch (e) { ajouterMessage("Erreur vision.", 'assistant'); }
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
         function nouvelleConversation() {
             conversationId = null;
             document.getElementById('chatBox').innerHTML = '<div class="msg assistant">Nouvelle discussion. Comment puis-je vous aider ?</div>';
             chargerHistorique();
         }
 
-        // INITIALISATION
         chargerHistorique();
     </script>
 </body>
