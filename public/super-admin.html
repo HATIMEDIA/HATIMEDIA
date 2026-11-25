@@ -251,6 +251,66 @@ document.getElementById("loginPanel").style.display = "none";
 document.getElementById("mainContainer").style.display = "block";
 chargerClients();
 }
+
+// ==========================================
+// CHARGEMENT DES STATS MÉDICALES GLOBALES
+// ==========================================
+async function chargerStatsMedicales() {
+    try {
+        const headers = { "Authorization": "Bearer " + token };
+        
+        // 1. Les compteurs (RDV, Patients, Consultations)
+        const resStats = await fetch('/api/super-admin/stats', { headers });
+        const stats = await resStats.json();
+        
+        if (stats.ok) {
+            document.getElementById('medicalStats').innerHTML = `
+                <div class="stat-card"><div class="num">${stats.totalRdv}</div><div class="lbl">📅 Rendez-vous</div></div>
+                <div class="stat-card"><div class="num">${stats.totalPatients}</div><div class="lbl">👤 Patients uniques</div></div>
+                <div class="stat-card"><div class="num">${stats.totalConsultations}</div><div class="lbl">📋 Pré-consultations</div></div>
+            `;
+        }
+
+        // 2. L'activité récente
+        const resActivity = await fetch('/api/super-admin/recent-activity', { headers });
+        const activity = await resActivity.json();
+        
+        if (activity.ok) {
+            const rdvContainer = document.getElementById('recent-rdvs');
+            rdvContainer.innerHTML = '';
+            if (activity.rdvs.length === 0) rdvContainer.innerHTML = '<p style="color:#64748b; font-size:13px;">Aucun RDV.</p>';
+            
+            activity.rdvs.forEach(r => {
+                const date = new Date(r.created_at).toLocaleString('fr-FR');
+                rdvContainer.innerHTML += `
+                    <div class="conv-item">
+                        <div class="title">${r.patient_name} ➔ Dr ${r.doctor_name}</div>
+                        <div class="meta">${date} | ${r.doctor_specialty}</div>
+                    </div>
+                `;
+            });
+
+            const consultContainer = document.getElementById('recent-consultations');
+            consultContainer.innerHTML = '';
+            if (activity.consultations.length === 0) consultContainer.innerHTML = '<p style="color:#64748b; font-size:13px;">Aucun bilan.</p>';
+
+            activity.consultations.forEach(c => {
+                const date = new Date(c.created_at).toLocaleString('fr-FR');
+                let motif = "Non spécifié";
+                const match = c.content.match(/\*\*Motif\*\* : (.*?)(?:\n|$)/);
+                if (match) motif = match[1];
+                
+                consultContainer.innerHTML += `
+                    <div class="conv-item">
+                        <div class="title">Bilan généré</div>
+                        <div class="meta">Motif : ${motif} | ${date}</div>
+                    </div>
+                `;
+            });
+        }
+    } catch (e) { console.error("Erreur stats médicales:", e); }
+}
+    
 </script>
 
 </body>
