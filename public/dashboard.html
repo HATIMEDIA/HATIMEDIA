@@ -4,25 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HATIMEDIA - Espace Médecin</title>
+    <!-- On ajoute la librairie pour le graphique -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f4f7f6; color: #333; padding: 20px; }
-        .header { text-align: center; margin-bottom: 30px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .header h1 { color: #2563eb; font-size: 28px; }
-        .container { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .btn-export { background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-export:hover { background: #059669; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .stat-card { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); text-align: center; }
+        .stat-card h3 { font-size: 14px; color: #64748b; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; }
+        .stat-card .num { font-size: 32px; font-weight: bold; color: #2563eb; }
+        
+        .chart-container { background: #fff; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 30px; height: 300px; }
+        
+        .container { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         .panel { background: #fff; border-radius: 12px; padding: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         .panel h2 { font-size: 18px; margin-bottom: 15px; border-bottom: 2px solid #eee; padding-bottom: 10px; }
-        .card { background: #f9fafb; border-left: 4px solid #10b981; padding: 15px; margin-bottom: 10px; border-radius: 6px; }
+        .card { background: #f9fafb; border-left: 4px solid #10b981; padding: 15px; margin-bottom: 10px; border-radius: 6px; position: relative; }
         .card h3 { font-size: 15px; color: #1e293b; margin-bottom: 5px; }
         .card p { font-size: 13px; color: #64748b; margin-bottom: 2px; }
+        .btn-annuler { position: absolute; top: 15px; right: 15px; background: #ef4444; color: white; border: none; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; }
     </style>
 </head>
 <body>
     <div class="header">
         <h1>🩺 Espace Médecin - HATIMEDIA</h1>
-        <p>Vos rendez-vous et bilans de pré-consultation</p>
+        <button class="btn-export" onclick="exporterCSV()">📥 Exporter en Excel (CSV)</button>
     </div>
     
+    <!-- STATISTIQUES -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <h3>Rendez-vous totaux</h3>
+            <div class="num" id="totalRdv">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Patients uniques</h3>
+            <div class="num" id="totalPatients">0</div>
+        </div>
+        <div class="stat-card">
+            <h3>Bilans de pré-consultation</h3>
+            <div class="num" id="totalBilans">0</div>
+        </div>
+    </div>
+
+    <!-- GRAPHIQUE -->
+    <div class="chart-container">
+        <canvas id="rdvChart"></canvas>
+    </div>
+    
+    <!-- LISTES -->
     <div class="container">
         <div class="panel">
             <h2>📅 Rendez-vous confirmés</h2>
@@ -35,31 +70,117 @@
     </div>
 
     <script>
-        async function chargerRdv() {
+        let allRdvs = [];
+        let allBilans = [];
+        let myChart = null;
+
+        async function chargerDashboard() {
             try {
-                const res = await fetch('/api/rdv/liste');
-                const data = await res.json();
-                const container = document.getElementById('rdv-list');
-                
-                if (!data.ok || data.rdvs.length === 0) {
-                    container.innerHTML = '<p style="color:#999;">Aucun rendez-vous pour le moment.</p>';
-                    return;
+                // 1. Charger les RDVs
+                const resRdv = await fetch('/api/rdv/liste');
+                const dataRdv = await resRdv.json();
+                if (dataRdv.ok) {
+                    allRdvs = dataRdv.rdvs;
+                    afficherRdvs();
+                    calculerStats();
+                    creerGraphique();
                 }
 
-                container.innerHTML = '';
-                data.rdvs.forEach(r => {
-                    const date = new Date(r.appointment_date).toLocaleString("fr-FR");
-                    container.innerHTML += `
-                        <div class="card">
-                            <h3>${r.patient_name} (${r.patient_email})</h3>
-                            <p><strong>Avec :</strong> ${r.doctor_name} - ${r.doctor_specialty}</p>
-                            <p><strong>Date :</strong> ${date}</p>
-                            <p>📍 ${r.doctor_address}</p>
-                            <button onclick="annulerRdv(${r.id})" style="margin-top: 10px; background: #ef4444; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-weight: bold;">Annuler</button>
-                        </div>
-                    `;
-                });
+                // 2. Charger les bilans
+                const resBilans = await fetch('/api/dashboard/pre-consultations');
+                const dataBilans = await resBilans.json();
+                if (dataBilans.ok) {
+                    allBilans = dataBilans.bilans;
+                    afficherBilans();
+                    document.getElementById('totalBilans').innerText = allBilans.length;
+                }
+
             } catch (e) { console.error(e); }
+        }
+
+        function afficherRdvs() {
+            const container = document.getElementById('rdv-list');
+            if (allRdvs.length === 0) {
+                container.innerHTML = '<p style="color:#999;">Aucun rendez-vous pour le moment.</p>';
+                return;
+            }
+            container.innerHTML = '';
+            allRdvs.forEach(r => {
+                const date = new Date(r.appointment_date).toLocaleString("fr-FR");
+                container.innerHTML += `
+                    <div class="card">
+                        <button class="btn-annuler" onclick="annulerRdv(${r.id})">Annuler</button>
+                        <h3>${r.patient_name} (${r.patient_email})</h3>
+                        <p><strong>Avec :</strong> ${r.doctor_name}</p>
+                        <p><strong>Date :</strong> ${date}</p>
+                        <p>📍 ${r.doctor_address}</p>
+                    </div>
+                `;
+            });
+        }
+
+        function afficherBilans() {
+            const container = document.getElementById('bilans-list');
+            if (allBilans.length === 0) {
+                container.innerHTML = '<p style="color:#999;">Aucun bilan pour le moment.</p>';
+                return;
+            }
+            container.innerHTML = '';
+            allBilans.forEach(b => {
+                const date = new Date(b.date).toLocaleString("fr-FR");
+                let texte = b.contenu.replace("📋 **Compte-rendu de pré-consultation**", "").trim();
+                container.innerHTML += `
+                    <div class="card" style="border-left-color: #2563eb;">
+                        <h3>Patient (Session: ${b.sessionId.substring(0,8)}...)</h3>
+                        <p style="font-size:11px; margin-bottom:10px;">${date}</p>
+                        <div style="white-space: pre-wrap; font-size:13px; line-height:1.5;">${texte}</div>
+                    </div>
+                `;
+            });
+        }
+
+        function calculerStats() {
+            document.getElementById('totalRdv').innerText = allRdvs.length;
+            
+            // Compter les patients uniques par email
+            const emails = new Set(allRdvs.map(r => r.patient_email));
+            document.getElementById('totalPatients').innerText = emails.size;
+        }
+
+        function creerGraphique() {
+            const ctx = document.getElementById('rdvChart').getContext('2d');
+            
+            // Grouper les RDVs par date (ex: "24/11")
+            const counts = {};
+            allRdvs.forEach(r => {
+                const d = new Date(r.appointment_date);
+                const dateStr = d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' });
+                counts[dateStr] = (counts[dateStr] || 0) + 1;
+            });
+
+            const labels = Object.keys(counts).sort();
+            const data = labels.map(l => counts[l]);
+
+            if (myChart) myChart.destroy();
+
+            myChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Nombre de rendez-vous',
+                        data: data,
+                        backgroundColor: '#2563eb',
+                        borderRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
         }
 
         async function annulerRdv(id) {
@@ -68,40 +189,28 @@
                 const res = await fetch(`/api/rdv/annuler/${id}`, { method: 'DELETE' });
                 const data = await res.json();
                 if (data.ok) {
-                    alert("✅ RDV annulé.");
-                    chargerRdv(); // Recharge la liste
+                    chargerDashboard(); // Recharge tout
                 }
             } catch (e) { alert("Erreur."); }
         }
 
-        async function chargerBilans() {
-            try {
-                const res = await fetch('/api/dashboard/pre-consultations');
-                const data = await res.json();
-                const container = document.getElementById('bilans-list');
-                
-                if (!data.ok || data.bilans.length === 0) {
-                    container.innerHTML = '<p style="color:#999;">Aucun bilan pour le moment.</p>';
-                    return;
-                }
+        function exporterCSV() {
+            if (allRdvs.length === 0) { alert("Aucun rendez-vous à exporter."); return; }
+            
+            let csv = "Patient,Email,Medecin,Specialite,Date,Adresse\n";
+            allRdvs.forEach(r => {
+                const date = new Date(r.appointment_date).toLocaleString("fr-FR").replace(/,/g, "");
+                csv += `"${r.patient_name}","${r.patient_email}","${r.doctor_name}","${r.doctor_specialty}","${date}","${r.doctor_address}"\n`;
+            });
 
-                container.innerHTML = '';
-                data.bilans.forEach(b => {
-                    const date = new Date(b.date).toLocaleString("fr-FR");
-                    let texte = b.contenu.replace("📋 **Compte-rendu de pré-consultation**", "").trim();
-                    container.innerHTML += `
-                        <div class="card" style="border-left-color: #2563eb;">
-                            <h3>Patient (Session: ${b.sessionId.substring(0,8)}...)</h3>
-                            <p style="font-size:11px; margin-bottom:10px;">${date}</p>
-                            <div style="white-space: pre-wrap; font-size:13px; line-height:1.5;">${texte}</div>
-                        </div>
-                    `;
-                });
-            } catch (e) { console.error(e); }
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = "hatimedia_rdvs.csv";
+            link.click();
         }
 
-        chargerRdv();
-        chargerBilans();
+        chargerDashboard();
     </script>
 </body>
 </html>
