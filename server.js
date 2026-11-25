@@ -326,7 +326,36 @@ app.get("/api/chat-public/conversations/:sessionId", async (req, res) => {
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ========================================
+// SUPER ADMIN (Vue globale du patron)
+// ========================================
 
+app.get("/super-admin", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "super-admin.html"));
+});
+
+app.get("/api/super-admin/stats", async (req, res) => {
+    try {
+        const rdvs = await pool.query(`SELECT COUNT(*) FROM appointments`);
+        const patients = await pool.query(`SELECT COUNT(DISTINCT patient_email) FROM appointments`);
+        const consultations = await pool.query(`SELECT COUNT(*) FROM messages WHERE content LIKE '%Compte-rendu%'`);
+        
+        res.json({
+            ok: true,
+            totalRdv: parseInt(rdvs.rows[0].count),
+            totalPatients: parseInt(patients.rows[0].count),
+            totalConsultations: parseInt(consultations.rows[0].count)
+        });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
+
+app.get("/api/super-admin/recent-activity", async (req, res) => {
+    try {
+        const recentRdvs = await pool.query(`SELECT * FROM appointments ORDER BY created_at DESC LIMIT 5`);
+        const recentConsultations = await pool.query(`SELECT content, created_at FROM messages WHERE content LIKE '%Compte-rendu%' ORDER BY created_at DESC LIMIT 5`);
+        res.json({ ok: true, rdvs: recentRdvs.rows, consultations: recentConsultations.rows });
+    } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
