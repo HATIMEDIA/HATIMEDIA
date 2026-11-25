@@ -81,7 +81,21 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; b
 
 <div class="clients-grid" id="clientsGrid"></div>
 </div>
+<!-- NOUVELLE SECTION : ACTIVITÉ MÉDICALE GLOBALE -->
+<h2 style="color: #4ade80; margin-top: 50px; margin-bottom: 20px; border-bottom: 1px solid #1f2937; padding-bottom: 10px;">📊 Activité Médicale Globale</h2>
+<div class="stats" id="medicalStats" style="margin-bottom: 20px;"></div>
 
+<div class="clients-grid">
+    <div class="client-card" style="cursor: default;">
+        <h3 style="color: #38bdf8; margin-bottom: 15px;">📅 Derniers Rendez-vous (Tous médecins)</h3>
+        <div id="recent-rdvs"></div>
+    </div>
+    <div class="client-card" style="cursor: default;">
+        <h3 style="color: #f59e0b; margin-bottom: 15px;">📋 Dernières Pré-consultations</h3>
+        <div id="recent-consultations"></div>
+    </div>
+</div>
+  
 <div class="modal" id="modal">
 <div class="modal-content">
 <button class="close" onclick="fermerModal()">✕</button>
