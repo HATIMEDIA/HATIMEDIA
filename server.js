@@ -291,11 +291,7 @@ app.delete("/api/rdv/annuler/:id", async (req, res) => {
 });
 
 app.get("/", (req, res) => {
-    res.sendFile(require("path").join(__dirname, "public", "index.html"));
-});
-
-app.get("/", (req, res) => {
-    res.sendFile(require("path").join(__dirname, "public", "index.html"));
+    res.sendFile(require("path").join(__dirname, "public", "accueil.html"));
 });
 
 app.get("/api/patient/rdvs", async (req, res) => {
