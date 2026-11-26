@@ -357,5 +357,53 @@ app.get("/api/super-admin/recent-activity", async (req, res) => {
     } catch (e) { res.status(500).json({ ok: false, error: e.message }); }
 });
 
+// ========================================
+// SUPER ADMIN CLIENTS (Routes manquantes)
+// ========================================
+
+app.get("/api/super-admin/clients", verifierToken, async (req, res) => {
+    try {
+        const result = await pool.query(`
+            SELECT 
+                c.id, c.slug, c.name, c.email, c.plan, c.status, c.created_at,
+                c.primary_color, c.secondary_color,
+                (SELECT COUNT(*) FROM conversations WHERE client_id = c.id) AS nb_conversations,
+                (SELECT COUNT(*) FROM messages WHERE client_id = c.id) AS nb_messages,
+                (SELECT COUNT(*) FROM users WHERE client_id = c.id) AS nb_users
+            FROM clients c
+            ORDER BY c.created_at DESC
+        `);
+        res.json({ ok: true, clients: result.rows });
+    } catch (error) {
+        console.error("Erreur super-admin clients :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+app.get("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
+    try {
+        const clientId = req.params.id;
+        const clientResult = await pool.query(`SELECT * FROM clients WHERE id = $1`, [clientId]);
+        if (clientResult.rows.length === 0) return res.status(404).json({ ok: false, error: "Client introuvable." });
+
+        const convsResult = await pool.query(
+            `SELECT c.id, c.title, c.created_at,
+                    (SELECT COUNT(*) FROM messages WHERE conversation_id = c.id) AS nb_messages,
+                    (SELECT content FROM messages WHERE conversation_id = c.id ORDER BY created_at DESC LIMIT 1) AS last_message
+             FROM conversations c
+             WHERE c.client_id = $1
+             ORDER BY c.created_at DESC
+             LIMIT 10`,
+            [clientId]
+        );
+
+        res.json({ ok: true, client: clientResult.rows[0], conversations: convsResult.rows });
+    } catch (error) {
+        console.error("Erreur super-admin détail :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
+
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
