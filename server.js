@@ -66,11 +66,10 @@ app.post("/api/chat-public", async (req, res) => {
         } else if (agent === "support") {
             promptAgent = "Tu es un agent de support client. Tu es poli, efficace, et tu aides à résoudre les problèmes.";
         } else if (agent === "code") {
-            promptAgent = "Tu es un expert en développement web. Tu réponds uniquement avec du code ou des explications techniques.";
+            promptAgent = "Tu es un expert en développement web. Si on te pose une question technique, réponds avec du code. Si on te pose une question générale (comme la géographie ou la vie quotidienne), réponds normalement et poliment, sans utiliser de code.";
         } else {
             promptAgent = "Tu es un assistant généraliste amical et serviable.";
         }
-
         let contexteInstruction = "", afficherCarte = false, villeCarte = "";
         
         // 2. DÉTECTION DU MODE RDV
