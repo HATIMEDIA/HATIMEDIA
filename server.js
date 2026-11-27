@@ -399,6 +399,11 @@ app.get("/api/super-admin/clients/:id", verifierToken, async (req, res) => {
     }
 });
 
+app.get("/contact", (req, res) => {
+    res.sendFile(require("path").join(__dirname, "public", "contact.html"));
+});
+
+
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
