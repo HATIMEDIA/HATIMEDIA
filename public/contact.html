@@ -51,8 +51,8 @@
                 } else {
                     alert("❌ Erreur : " + data.error);
                 }
-            } catch (err) {
-                alert("❌ Erreur de connexion.");
+                } catch (err) {
+                alert("❌ Erreur : " + err.message);
             }
         }
     </script>
