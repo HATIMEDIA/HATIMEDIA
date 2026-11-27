@@ -403,7 +403,45 @@ app.get("/contact", (req, res) => {
     res.sendFile(require("path").join(__dirname, "public", "contact.html"));
 });
 
+// ========================================
+// CONTACT API
+// ========================================
+app.post("/api/contact", async (req, res) => {
+    try {
+        const { nom, email, message } = req.body;
 
+        if (!nom || !email || !message) {
+            return res.status(400).json({ ok: false, error: "Tous les champs sont obligatoires." });
+        }
+
+        const { Resend } = require("resend");
+        const resend = new Resend(process.env.RESEND_API_KEY);
+
+        await resend.emails.send({
+            from: "HATIMEDIA Contact <onboarding@resend.dev>",
+            to: "hatimedia@hotmail.com", // Votre email de réception
+            subject: `📧 Nouveau contact : ${nom}`,
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px;">
+                    <h2 style="color: #4ade80;">📧 Nouveau message de contact</h2>
+                    <p><strong>Nom :</strong> ${nom}</p>
+                    <p><strong>Email :</strong> ${email}</p>
+                    <hr>
+                    <h3>Message :</h3>
+                    <blockquote style="background: #f0f0f0; padding: 12px; border-left: 4px solid #4ade80;">
+                        ${message}
+                    </blockquote>
+                </div>
+            `
+        });
+
+        console.log("📧 Contact reçu :", nom, email);
+        res.json({ ok: true });
+    } catch (error) {
+        console.error("❌ Erreur contact :", error);
+        res.status(500).json({ ok: false, error: error.message });
+    }
+});
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, "0.0.0.0", () => console.log("Serveur démarré sur le port " + PORT));
